@@ -2,7 +2,7 @@
 module Main where
 
 import Data.Word (Word8)
---import Data.Fixed (mod')
+import Data.Fixed (mod')
 import qualified Data.ByteString as B
 import qualified Graphics.Gloss as G
 import Graphics.Gloss (Color, makeColor, white, black)
@@ -12,10 +12,8 @@ main = display circle
 
 -- returns a color for each (x,y,ts) with (x,y) normalized to 0..1 and ts in seconds.
 blinkingGradient :: Float -> Float -> Float -> Color
-blinkingGradient x y ts = lerp grad white (blink 2 ts)
-  where
-    grad = makeColor x y 0 1
-    blink per = scaleSin . sin . periodRad per
+blinkingGradient x y ts = lerp grad white (cosCycle 2 ts)
+  where grad = makeColor x y 0 1
 
 circle :: Float -> Float -> Float -> Color
 circle x y ts = if r < 0.75 then (blinkingGradient x y ts) else black
@@ -23,6 +21,18 @@ circle x y ts = if r < 0.75 then (blinkingGradient x y ts) else black
     xx = lerp (-1.0) 1.0 x
     yy = lerp (-1.0) 1.0 y
     r = sqrt (xx*xx + yy*yy) :: Float
+
+-- sinCyle cycles from [0..1] with period per using sin.
+sinCycle :: Float -> Float -> Float
+sinCycle per = scaleSin . sin . periodRad per
+
+-- cosCyle cycles from [0..1] with period per using cos.
+cosCycle :: Float -> Float -> Float
+cosCycle per = scaleSin . cos . periodRad per
+
+-- rampCycle cycles from [0..1] with period per using a linear ramp up.
+rampCycle :: Float -> Float -> Float
+rampCycle per x = mod' (x / per) 1.0
 
 -- periodRad returns radians for sin/cos to cycle with period per.
 periodRad :: Float -> Float -> Float
