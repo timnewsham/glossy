@@ -10,7 +10,7 @@ module Lib (
 ) where
 
 import Data.Fixed (mod')
-import Graphics.Gloss (Color, makeColor, white, black)
+import Graphics.Gloss (Color, makeColor, rgbaOfColor)
 
 -- sinCyle cycles from [0..1] with period per using sin.
 sinCycle :: Float -> Float -> Float
@@ -66,4 +66,4 @@ instance Scale Int where
 -- Scaling a color adjusts the RGB channels but leaves A unchanged.
 instance Scale Color where
   scale s c = makeColor (s*r) (s*g) (s*b) a
-    where (r,g,b,a) = G.rgbaOfColor c
+    where (r,g,b,a) = rgbaOfColor c
