@@ -65,7 +65,7 @@ ang (x, y) = atan2 y x
 translate :: Coord -> Coord -> Coord
 translate (dx, dy) (x,y) = (x + dx, y + dy)
 
--- TODO: make Coord a Scale
+-- TODO: make Coord a Scale?
 scaleF :: Float -> Coord -> Coord
 scaleF s (x, y) = (x*s, y*s)
 
@@ -158,9 +158,8 @@ transformImage f (Image imgf) = Image (imgf . f)
 translateImage :: Coord -> Image a -> Image a
 translateImage (dx, dy) = transformImage $ translate (-dx, -dy)
 
--- scale an iamge by s.
--- not a Scale instance because Image a is not a distinct type.
--- XXX make Image a Scale.
+-- scale an image's coordinates by s.
+-- Note this is different than `scale` on images which scales image values.
 scaleImage :: Float -> Image a -> Image a
 scaleImage s = transformImage $ scaleF (1/s)
 

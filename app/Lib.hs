@@ -95,6 +95,13 @@ instance Lerpable Color where
     where (r,g,b,a) = rgbaOfColor c
   add = (+)
 
+-- Coordinates can be scaled and added.
+{-
+instance Lerpable (Float, Float) where
+  scale s (x,y) = (s*x, s*y)
+  add (x, y) (x', y') = (x+x', y+y')
+-}
+
 -- XXX generalize to all applicatives
 instance Lerpable a => Lerpable (Image a) where
   scale s img = fmap (scale s) img
