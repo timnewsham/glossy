@@ -15,21 +15,23 @@ module Types (
   , bwBitmap
   , constImage
   , transformImage
+  , translate
   , translateImage
+  , scaleF
   , scaleImage
+  , unitToOrigin
   , originImage
+  , originToUnit
+  , unoriginImage
   , rot
   , rotateImage
   , mixImage
   , maskImage
-  , mapImage
-  , mapImage2
-  , mapImage3
   , constAnim
-  , mapAnim
-  , mapAnimTime
-  , scaleAnim
-  , translateAnim
+  , mapImages
+  , warpTime
+  , speedUp
+  , fastForward
 
   -- re-exports.
   , Color
@@ -38,6 +40,8 @@ module Types (
   , white
   , black
 ) where
+
+import Control.Applicative
 
 import GlossTypes
 
@@ -81,39 +85,60 @@ type ColorAnim = Anim Color
 constImage :: a -> Image a
 constImage = Image . const
 
--- fmap over images value by value.
-mapImage :: (a -> b) -> Image a -> Image b
-mapImage f (Image imgf) = Image (f . imgf)
-
+-- fmap over images value by value at each coordinate.
 instance Functor Image where
-  fmap = mapImage
+  fmap f (Image imgf) = Image (f . imgf)
+
+instance Applicative Image where
+  pure v = mkImage (\_coord -> v)
+  (Image imgf1) <*> (Image imgf2) = Image (\coord -> imgf1 coord (imgf2 coord))
 
 -- combine two images with a function over values.
-mapImage2 :: (a -> b -> c) -> Image a -> Image b -> Image c
-mapImage2 f (Image img1f) (Image img2f) = Image (\coord -> f (img1f coord) (img2f coord))
+-- mapImage2 :: (a -> b -> c) -> Image a -> Image b -> Image c
+-- mapImage2 f (Image img1f) (Image img2f) = Image (\coord -> f (img1f coord) (img2f coord))
+-- mapImage2 = liftA2
 
 -- combine three images with a function over values.
-mapImage3 :: (a -> b -> c -> d) -> Image a -> Image b -> Image c -> Image d
-mapImage3 f (Image img1f) (Image img2f) (Image img3f) = Image (\coord -> f (img1f coord) (img2f coord) (img3f coord))
+-- mapImage3 :: (a -> b -> c -> d) -> Image a -> Image b -> Image c -> Image d
+-- mapImage3 f (Image img1f) (Image img2f) (Image img3f) = Image (\coord -> f (img1f coord) (img2f coord) (img3f coord))
+-- mapImage3 = liftA3
 
 -- transforms an image's coordinates by f.
 -- note: the image will appear transformed by the inverse of f.
 -- but for simplicity I'm not going to try to define inverse functions.
 transformImage :: (Coord -> Coord) -> Image a -> Image a
-transformImage f (Image imgf) = Image (\coord -> imgf (f coord))
+transformImage f (Image imgf) = Image (imgf . f)
+
+translate :: Coord -> Coord -> Coord
+translate (dx, dy) (x,y) = (x + dx, y + dy)
 
 -- translate an image by (dx, dy).
-translateImage :: Float -> Float -> Image a -> Image a
-translateImage dx dy = transformImage (\(x, y) -> (x-dx, y-dy))
+translateImage :: Coord -> Image a -> Image a
+translateImage (dx, dy) = transformImage $ translate (-dx, -dy)
+
+-- TODO: make Coord a Scale
+scaleF :: Float -> Coord -> Coord
+scaleF s (x, y) = (x*s, y*s)
 
 -- scale an iamge by s.
 -- not a Scale instance because Image a is not a distinct type.
+-- XXX make Image a Scale.
 scaleImage :: Float -> Image a -> Image a
-scaleImage s = transformImage (\(x, y) -> (x/s, y/s))
+scaleImage s = transformImage (scaleF (1/s))
 
--- transform coordinates to display image at the origin.
+unitToOrigin :: Coord -> Coord
+unitToOrigin = translate (-1, -1) . scaleF 2
+
+-- transform coordinates to display image at the origin from first quadrant coordinates.
 originImage :: Image a -> Image a
-originImage = transformImage (\(x, y) -> (2*x-1, 2*y-1))
+originImage = transformImage unitToOrigin
+
+originToUnit :: Coord -> Coord
+originToUnit = scaleF 0.5 . translate (1, 1)
+
+-- transform coordinates to display image in first quadrant from centered coordinates.
+unoriginImage :: Image a -> Image a
+unoriginImage = transformImage originToUnit
 
 rot :: Float -> Coord -> Coord
 rot theta (x, y) = (x * costheta - y * sintheta, x * sintheta + y * costheta)
@@ -126,11 +151,11 @@ rotateImage theta = transformImage $ rot (0-theta)
 
 -- mixImage shows background image bg where bm is false and foreground image fg where bm is true.
 mixImage :: Bitmap -> Image a -> Image a -> Image a
-mixImage = mapImage3 (\bmv bgv fgv -> if bmv then fgv else bgv)
+mixImage = liftA3 (\bmv bgv fgv -> if bmv then fgv else bgv)
 
 -- maskImage shows image fg where bm is true, and zero when bm is false.
 maskImage :: Num a => Bitmap -> Image a -> Image a
-maskImage = mapImage2 (\bmv fgv -> if bmv then fgv else 0)
+maskImage = liftA2 (\bmv fgv -> if bmv then fgv else 0)
 
 -- colorBitmap returns a color image with bg color when bm is false and fg color when bm is true.
 colorBitmap :: Color -> Color -> Bitmap -> ColorImage
@@ -144,18 +169,27 @@ bwBitmap = colorBitmap black white
 constAnim :: Image a -> Anim a
 constAnim img = Anim (\_ts -> img)
 
--- mapAnim maps f over the values in each animated image.
 -- mapAnim runs f over each animated image.
-mapAnim :: (Image a -> Image b) -> Anim a -> Anim b
-mapAnim f (Anim an) = Anim (\ts -> f (an ts))
+-- fmap on an Anim will run f on each value from each image in Anim.
+instance Functor Anim where
+  -- at each ts we get the image and map f over it.
+  -- Anim (\ts -> fmap f (an ts))
+  fmap f (Anim an) = Anim (fmap f . an)
 
-mapAnimTime :: (Float -> Float) -> Anim a -> Anim a
-mapAnimTime f (Anim an) = Anim (\ts -> an (f ts))
+-- mapImages will run f over each image in an Anim.
+-- at each ts we get the image and use f to map it.
+--   Anim (\ts -> f (an ts))
+mapImages :: (Image a -> Image b) -> Anim a -> Anim b
+mapImages f (Anim an) = Anim (f . an)
 
--- scaleAnim speeds up the animation by s.
-scaleAnim :: Float -> Anim a -> Anim a
-scaleAnim s = mapAnimTime (*s)
+-- warpTime uses (f time) as the time in the animation.
+warpTime :: (Float -> Float) -> Anim a -> Anim a
+warpTime f (Anim an) = Anim (\ts -> an (f ts))
 
--- translateAnim skips the animation backwards in time by dt.
-translateAnim :: Float -> Anim a -> Anim a
-translateAnim dt = mapAnimTime (\t -> t - dt)
+-- speedUp speeds up the animation by s.
+speedUp :: Float -> Anim a -> Anim a
+speedUp s = warpTime (*s)
+
+-- fastForward skips the animation forward by dt.
+fastForward :: Float -> Anim a -> Anim a
+fastForward dt = warpTime (+dt)

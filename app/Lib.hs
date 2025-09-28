@@ -73,4 +73,4 @@ instance Scale Color where
 
 -- animOrigin shows the animation with the origin centered, with coordinates over [-1..1].
 animOrigin :: ColorAnim -> IO ()
-animOrigin = anim . mapAnim originImage
+animOrigin = anim . mapImages originImage
