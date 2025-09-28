@@ -1,6 +1,8 @@
 -- Types for the images, bitmaps, and animations.
 module Types (
   Coord
+  , mag
+  , ang
   , Image(..)
   , mkImage
   , calcImage
@@ -53,6 +55,12 @@ import Data.Monoid
 import GlossTypes
 
 type Coord = (Float, Float)
+
+mag :: Coord -> Float
+mag (x, y) = sqrt (x*x + y*y)
+
+ang :: Coord -> Float
+ang (x, y) = atan2 y x
 
 translate :: Coord -> Coord -> Coord
 translate (dx, dy) (x,y) = (x + dx, y + dy)

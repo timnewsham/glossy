@@ -7,9 +7,12 @@ module Lib (
   , clamp
   , lerp
   , unlerp
-
-  , Scale
-  , Addable
+  , Lerpable
+  , blend
+  , fade
+  , withPos
+  , withTime
+  , withTimePos
 
   , animOrigin
 ) where
@@ -46,7 +49,7 @@ clamp minx maxx x = if x < minx then minx else if x > maxx then maxx else x
 
 -- lerp returns the linear interpolation between minv and maxv based on t, which is clamped to [0..1].
 -- You can lerp anything that can be scaled and added.
-lerp :: (Scale a, Addable a) => Float -> a -> a -> a
+lerp :: Lerpable a => Float -> a -> a -> a
 lerp t minv maxv = ((1-t') ^* minv) ^+ (t' ^* maxv)
   where t' = clamp 0.0 1.0 t
 
@@ -55,57 +58,70 @@ lerp t minv maxv = ((1-t') ^* minv) ^+ (t' ^* maxv)
 unlerp :: Float -> Float -> Float -> Float
 unlerp v minv maxv = (v - minv) / (maxv - minv)
 
--- Scale a is a type that can be scaled by a float.
-class Scale a where
+-- blend from image1 to image2 by fade factor from [0..1].
+blend :: Lerpable a => Float -> Image a -> Image a -> Image a
+blend t img1 img2 = lerp t img1 img2
+
+-- fade from an1 to an2 over time using tfunc to calculate the fade factor from the time.
+fade :: Lerpable a => (Float -> Float) -> Anim a -> Anim a -> Anim a
+fade tfunc an1 an2 = Anim (\ts -> blend (tfunc ts) (unAnim an1 ts) (unAnim an2 ts))
+
+-- Lerpable a is a type that can be scaled by a float and added together.
+class Lerpable a where
   scale :: Float -> a -> a
-
--- Just another name for scale.
-(^*) :: Scale a => Float -> a -> a
-(^*) = scale
-
--- Addable a is a type that can be added.
--- It might not be a full Num.
-class Addable a where
   add :: a -> a -> a
 
--- XXX generalize to all applicatives
-instance Addable a => Addable (Image a) where
-  add = liftA2 add
-
-instance Addable a => Addable (Anim a) where
-  add = liftA2 add
+-- Just another name for scale.
+(^*) :: Lerpable a => Float -> a -> a
+(^*) = scale
 
 -- Another name for add
-(^+) :: Addable a => a -> a -> a
+(^+) :: Lerpable a => a -> a -> a
 (^+) = add
 
 -- You can scale floats.
-instance Scale Float where
+instance Lerpable Float where
   scale s x = s * x
-
-instance Addable Float where
   add = (+)
 
 -- You can scale ints.
-instance Scale Int where
+instance Lerpable Int where
   scale s x = floor (s * fromIntegral x)
-
-instance Addable Int where
   add = (+)
 
 -- Scaling a color adjusts the RGB channels but leaves A unchanged.
-instance Scale Color where
+instance Lerpable Color where
   scale s c = makeColor (s*r) (s*g) (s*b) a
     where (r,g,b,a) = rgbaOfColor c
-
-instance Addable Color where
   add = (+)
 
-instance Scale a => Scale (Image a) where
+-- XXX generalize to all applicatives
+instance Lerpable a => Lerpable (Image a) where
   scale s img = fmap (scale s) img
+  add = liftA2 add
 
-instance Scale a => Scale (Anim a) where
-  scale s an = fmap (scale s) an
+instance Lerpable a => Lerpable (Anim a) where
+  scale s img = fmap (scale s) img
+  add = liftA2 add
+
+-- withPos takes a function from position to Image a, and generates an Image.
+-- This plumbing can make it easier to get a handle on the position by
+-- wrapping and unwrapping the Image function for you.
+withPos :: (Coord -> Image a) -> Image a
+withPos im = Image (\pos -> calcImage (im pos) pos)
+
+-- withTime takes a function from time to an animation, and animates it.
+-- This plumbing can make it easier to get a handle on the timestamp by
+-- wrapping and unwrapping the Anim function for you.
+withTime :: (Float -> Anim a) -> Anim a
+withTime an = Anim (\ts -> unAnim (an ts) ts)
+
+-- withTime takes a function from (time, coord) to an animation, and animates it.
+-- This plumbing can make it easier to get a handle on the timestamp and position by
+-- wrapping and unwrapping the Anim function for you.
+withTimePos :: (Float -> Coord -> Anim a) -> Anim a
+-- XXX rewrite this more cleanly in terms of withTime and withPos.
+withTimePos an = Anim (\ts -> withPos (\pos -> unAnim (an ts pos) ts))
 
 -- animOrigin shows the animation with the origin centered, with coordinates over [-1..1].
 animOrigin :: ColorAnim -> IO ()
