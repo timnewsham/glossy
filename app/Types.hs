@@ -32,8 +32,9 @@ module Types (
 
 import Gloss
 
+-- Coord from gloss
 -- Image from Gloss
-mkImage :: (Float -> Float -> a) -> Image a
+mkImage :: (Coord -> a) -> Image a
 mkImage = Image
 
 -- A bitmap is an image of Bools.
@@ -45,8 +46,8 @@ type Bitmap = Image Bool
 type ColorImage = Image Color
 
 -- Anim from Gloss
-mkAnim :: (Float -> Float -> Float -> a) -> Anim a
-mkAnim f = Anim (\ts -> Image (\x y -> f ts x y))
+mkAnim :: (Float -> Coord -> a) -> Anim a
+mkAnim f = Anim (\ts -> Image (\coord -> f ts coord))
 
 -- A ColorAnim is animation of Color images.
 -- It maps timestamps in seconds and (x,y) to Colors.
@@ -54,41 +55,41 @@ type ColorAnim = Anim Color
 
 -- constImage returns an image where all (x,y) values are v.
 constImage :: a -> Image a
-constImage v = Image (\_x _y -> v)
+constImage v = Image (\_coord -> v)
 
 -- fmap over images value by value.
 mapImage :: (a -> b) -> Image a -> Image b
-mapImage f (Image imgf) = Image (\x y -> f (imgf x y))
+mapImage f (Image imgf) = Image (\coord -> f (imgf coord))
 
 -- combine two images with a function over values.
 mapImage2 :: (a -> b -> c) -> Image a -> Image b -> Image c
-mapImage2 f (Image img1f) (Image img2f) = Image (\x y -> f (img1f x y) (img2f x y))
+mapImage2 f (Image img1f) (Image img2f) = Image (\coord -> f (img1f coord) (img2f coord))
 
 -- combine three images with a function over values.
 mapImage3 :: (a -> b -> c -> d) -> Image a -> Image b -> Image c -> Image d
-mapImage3 f (Image img1f) (Image img2f) (Image img3f) = Image (\x y -> f (img1f x y) (img2f x y) (img3f x y))
+mapImage3 f (Image img1f) (Image img2f) (Image img3f) = Image (\coord -> f (img1f coord) (img2f coord) (img3f coord))
 
 -- transforms an image's coordinates by f.
 -- note: the image will appear transformed by the inverse of f.
 -- but for simplicity I'm not going to try to define inverse functions.
-transformImage :: (Float -> Float -> (Float, Float)) -> Image a -> Image a
-transformImage f (Image imgf) = Image (\x y -> let (x', y') = f x y in imgf x' y')
+transformImage :: (Coord -> Coord) -> Image a -> Image a
+transformImage f (Image imgf) = Image (\coord -> imgf (f coord))
 
 -- translate an image by (dx, dy).
 translateImage :: Float -> Float -> Image a -> Image a
-translateImage dx dy = transformImage (\x y -> (x-dx, y-dy))
+translateImage dx dy = transformImage (\(x, y) -> (x-dx, y-dy))
 
 -- scale an iamge by s.
 -- not a Scale instance because Image a is not a distinct type.
 scaleImage :: Float -> Image a -> Image a
-scaleImage s = transformImage (\x y -> (x/s, y/s))
+scaleImage s = transformImage (\(x, y) -> (x/s, y/s))
 
 -- transform coordinates to display image at the origin.
 originImage :: Image a -> Image a
-originImage = transformImage (\x y -> (2*x-1, 2*y-1))
+originImage = transformImage (\(x, y) -> (2*x-1, 2*y-1))
 
-rot :: Float -> Float -> Float -> (Float, Float)
-rot theta x y = (x * costheta - y * sintheta, x * sintheta + y * costheta)
+rot :: Float -> Coord -> Coord
+rot theta (x, y) = (x * costheta - y * sintheta, x * sintheta + y * costheta)
   where
     costheta = cos theta
     sintheta = sin theta

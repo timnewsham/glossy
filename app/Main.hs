@@ -21,7 +21,7 @@ main = animOrigin (Anim (\ts -> (rotCircle (periodRad 5 ts))))
 gradient :: ColorImage
 gradient = mkImage gradient'
 
-gradient' x y = makeColor x' y' 0 1
+gradient' (x, y) = makeColor x' y' 0 1
   where
     x' = unlerp (-1.0) 1.0 x
     y' = unlerp (-1.0) 1.0 y
@@ -30,11 +30,16 @@ gradient' x y = makeColor x' y' 0 1
 blinkingGradient :: ColorAnim
 blinkingGradient = mkAnim blinkingGradient'
 
-blinkingGradient' ts x y = lerp grad white (cosCycle 2 ts)
+centeredToUnit :: Coord -> Coord
+centeredToUnit (x,y) = (x', y')
   where
-    grad = makeColor x' y' 0 1
     x' = unlerp (-1.0) 1.0 x
     y' = unlerp (-1.0) 1.0 y
+
+blinkingGradient' ts coord = lerp grad white (cosCycle 2 ts)
+  where
+    (x', y') = centeredToUnit coord
+    grad = makeColor x' y' 0 1
 
 -- a circle at the origin colored by a blinking grandient.
 circle :: Float -> ColorAnim
@@ -62,14 +67,14 @@ rotCircle theta = rotateImage theta (mask gradient)
 bmCircle :: Float -> Bitmap
 bmCircle rad = mkImage $ bmCircle' rad
 
-bmCircle' rad x y = d < rad
+bmCircle' rad (x, y) = d < rad
   where d = sqrt (x*x + y*y) :: Float
 
 -- an nxn checkerboard at the origin from [-1..1].
 bmChecker :: Int -> Bitmap
 bmChecker n = mkImage $ bmChecker' n
 
-bmChecker' n x y = even (square x' + square y')
+bmChecker' n (x, y) = even (square x' + square y')
   where
     square v = floor (v * fromIntegral n) :: Int
     x' = unlerp (-1.0) 1.0 x
