@@ -12,6 +12,8 @@ module Lib (
 ) where
 
 import Data.Fixed (mod')
+import Control.Applicative
+
 import Gloss (anim)
 import Types
 
@@ -41,8 +43,8 @@ clamp minx maxx x = if x < minx then minx else if x > maxx then maxx else x
 
 -- lerp returns the linear interpolation between minv and maxv based on t, which is clamped to [0..1].
 -- You can lerp anything that can be scaled and added.
-lerp :: (Scale a, Num a) => a -> a -> Float -> a
-lerp minv maxv t = (1-t') ^* minv + t' ^* maxv
+lerp :: (Scale a, Addable a) => a -> a -> Float -> a
+lerp minv maxv t = ((1-t') ^* minv) ^+ (t' ^* maxv)
   where t' = clamp 0.0 1.0 t
 
 -- unlerp scales v to [0..1] based on how far it is between minv and maxv.
@@ -58,18 +60,49 @@ class Scale a where
 (^*) :: Scale a => Float -> a -> a
 (^*) = scale
 
+-- Addable a is a type that can be added.
+-- It might not be a full Num.
+class Addable a where
+  add :: a -> a -> a
+
+-- XXX generalize to all applicatives
+instance Addable a => Addable (Image a) where
+  add = liftA2 add
+
+instance Addable a => Addable (Anim a) where
+  add = liftA2 add
+
+-- Another name for add
+(^+) :: Addable a => a -> a -> a
+(^+) = add
+
 -- You can scale floats.
 instance Scale Float where
   scale s x = s * x
+
+instance Addable Float where
+  add = (+)
 
 -- You can scale ints.
 instance Scale Int where
   scale s x = floor (s * fromIntegral x)
 
+instance Addable Int where
+  add = (+)
+
 -- Scaling a color adjusts the RGB channels but leaves A unchanged.
 instance Scale Color where
   scale s c = makeColor (s*r) (s*g) (s*b) a
     where (r,g,b,a) = rgbaOfColor c
+
+instance Addable Color where
+  add = (+)
+
+instance Scale a => Scale (Image a) where
+  scale s img = fmap (scale s) img
+
+instance Scale a => Scale (Anim a) where
+  scale s an = fmap (scale s) an
 
 -- animOrigin shows the animation with the origin centered, with coordinates over [-1..1].
 animOrigin :: ColorAnim -> IO ()

@@ -17,7 +17,10 @@ main = do
   let _t6 = (speedUp 5 circle075)
   let _t7 = (constAnim (bwBitmap (bmCircle 0.75)))
   let _t8 = (constAnim (bwBitmap (bmChecker 8)))
-  animOrigin _t1
+  let _t9 = lerp _t8 _t1 0.5
+  -- let _t9b = Anim (\ts -> lerp (unAnim _t8 ts) (unAnim _t1 ts) (cosCycle 3 ts))
+  let _t9b = Anim (lerp <$> unAnim _t8 <*> unAnim _t1 <*> cosCycle 3)
+  animOrigin _t9b
 
 -- a gradient centered at the origin.
 gradient :: ColorImage
