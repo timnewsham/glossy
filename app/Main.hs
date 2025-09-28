@@ -7,7 +7,11 @@ import Types
 
 main :: IO ()
 main = display circle
--- main = display (\ts -> bwBitmap (bmCircle 0.75))
+-- main = display (mapAnim (scaleImage 0.5) circle)
+-- main = display (mapAnim (translateImage 0.3 0 . scaleImage 0.5) circle)
+-- main = display (translateAnim 10 (scaleAnim 0.5 circle))
+-- main = display (scaleAnim 0.5 circle)
+-- main = display (constAnim (bwBitmap (bmCircle 0.75)))
 
 blinkingGradient :: ColorAnim
 blinkingGradient ts x y = lerp grad white (cosCycle 2 ts)
