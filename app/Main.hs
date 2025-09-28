@@ -6,6 +6,7 @@ import Lib
 
 main :: IO ()
 main = display circle
+-- main = display (\ts -> colorBitmap black white bmCircle)
 
 
 -- returns a color for each (ts, x,y) with (x,y) normalized to 0..1 and ts in seconds.
@@ -16,7 +17,10 @@ blinkingGradient ts x y = lerp grad white (cosCycle 2 ts)
 
 circle :: ColorAnim
 -- circle :: Float -> Float -> Float -> Color
-circle ts x y = if r < 0.75 then (blinkingGradient ts x y) else black
+circle ts = maskImage (constImage black) (blinkingGradient ts) (bmCircle 0.75)
+
+bmCircle :: Float -> Bitmap
+bmCircle rad x y = r < rad
   where
     xx = lerp (-1.0) 1.0 x
     yy = lerp (-1.0) 1.0 y

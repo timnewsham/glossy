@@ -5,6 +5,9 @@ module GraphLib (
   , Bitmap
   , Anim
   , ColorAnim
+  , colorBitmap
+  , constImage
+  , maskImage
 
   -- re-exports.
   , Color
@@ -36,6 +39,19 @@ type Anim a = Float -> Image a
 -- A ColorAnim is animation of Color images.
 -- It maps timestamps in seconds and (x,y) in range [0..1] to Colors.
 type ColorAnim = Anim Color
+
+-- colorBitmap returns a color image with bg color when bm is false and fg color when bm is true.
+colorBitmap :: Color -> Color -> Bitmap -> ColorImage
+colorBitmap bg fg bm = (\x y -> if bm x y then fg else bg)
+
+-- constImage returns an image where all (x,y) values are v.
+constImage :: a -> Image a
+constImage v _ _ = v
+
+-- maskImage shows background image bg where bm is false and foreground image fg where bm is true.
+maskImage :: Image a -> Image a -> Bitmap -> Image a
+maskImage bg fg bm = (\x y -> if bm x y then fg x y else bg x y)
+
 
 -- genRGBA returns an RGBA bitmap with size (xsz,ysz) using picfunc.
 genRGBA :: (Int, Int) -> ColorAnim -> Float -> G.Picture
