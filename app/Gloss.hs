@@ -1,6 +1,6 @@
 -- Gloss encapsulates graphics support from Graphics.Gloss.
 module Gloss (
-  display
+  anim
   , scaleColor
 
   -- re-exports.
@@ -36,9 +36,9 @@ genRGBA (xsz, ysz) picfunc ts = G.bitmapOfByteString xsz ysz fmt bs False
     fmt :: G.BitmapFormat
     fmt = G.BitmapFormat G.BottomToTop G.PxRGBA
 
--- display will show an animation defined by f in a window with (x,y) ranging over [0..1].
-display :: ColorAnim -> IO ()
-display f = do
+-- anim will show an animation defined by f in a window with (x,y) ranging over [0..1].
+anim :: ColorAnim -> IO ()
+anim f = do
   let wsz = (500, 500)
   let disp = G.InWindow "Animate!" wsz (10, 10)
   G.animate disp white (genRGBA wsz f)

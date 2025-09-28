@@ -6,23 +6,26 @@ import Lib
 import Types
 
 main :: IO ()
-main = display circle
--- main = display (mapAnim (scaleImage 0.5) circle)
--- main = display (mapAnim (translateImage 0.3 0 . scaleImage 0.5) circle)
--- main = display (translateAnim 10 (scaleAnim 0.5 circle))
--- main = display (scaleAnim 0.5 circle)
--- main = display (constAnim (bwBitmap (bmCircle 0.75)))
+main = animOrigin circle
+-- main = animOrigin (mapAnim (scaleImage 0.5) circle)
+-- main = animOrigin (mapAnim (translateImage 0.3 0 . scaleImage 0.5) circle)
+-- main = animOrigin (translateAnim 10 (scaleAnim 0.5 circle))
+-- main = animOrigin (scaleAnim 0.5 circle)
+-- main = animOrigin (constAnim (bwBitmap (bmCircle 0.75)))
 
+-- a gradient centered at the origin that cycles with time.
 blinkingGradient :: ColorAnim
 blinkingGradient ts x y = lerp grad white (cosCycle 2 ts)
-  where grad = makeColor x y 0 1
+  where
+    grad = makeColor x' y' 0 1
+    x' = unlerp (-1.0) 1.0 x
+    y' = unlerp (-1.0) 1.0 y
 
+-- a circle at the origin colored by a blinking grandient.
 circle :: ColorAnim
 circle ts = maskImage (constImage black) (blinkingGradient ts) (bmCircle 0.75)
 
+-- a circle at the origin with radius rad.
 bmCircle :: Float -> Bitmap
-bmCircle rad x y = r < rad
-  where
-    xx = lerp (-1.0) 1.0 x
-    yy = lerp (-1.0) 1.0 y
-    r = sqrt (xx*xx + yy*yy) :: Float
+bmCircle rad x y = d < rad
+  where d = sqrt (x*x + y*y) :: Float

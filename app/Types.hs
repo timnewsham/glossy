@@ -8,8 +8,10 @@ module Types (
   , colorBitmap
   , bwBitmap
   , constImage
+  , transformImage
   , translateImage
   , scaleImage
+  , originImage
   , maskImage
   , mapImage
   , mapImage2
@@ -19,9 +21,11 @@ module Types (
   , mapAnimTime
   , scaleAnim
   , translateAnim
+
+  , animOrigin
 ) where
 
-import Graphics.Gloss
+import Gloss
 
 -- An image maps (x,y) (often in range [0..1]) to values.
 -- Note: we're not defining new types or data types, to keep it simple,
@@ -60,14 +64,24 @@ mapImage2 f img1 img2 x y = f (img1 x y) (img2 x y)
 mapImage3 :: (a -> b -> c -> d) -> Image a -> Image b -> Image c -> Image d
 mapImage3 f img1 img2 img3 x y = f (img1 x y) (img2 x y) (img3 x y)
 
+-- transforms an image's coordinates by f.
+-- note: the image will appear transformed by the inverse of f.
+-- but for simplicity I'm not going to try to define inverse functions.
+transformImage :: (Float -> Float -> (Float, Float)) -> Image a -> Image a
+transformImage f img x y = let (x', y') = f x y in img x' y'
+
 -- translate an image by (dx, dy).
 translateImage :: Float -> Float -> Image a -> Image a
-translateImage dx dy img x y = img (x - dx) (y - dy)
+translateImage dx dy = transformImage (\x y -> (x-dx, y-dy))
 
 -- scale an iamge by s.
 -- not a Scale instance because Image a is not a distinct type.
 scaleImage :: Float -> Image a -> Image a
-scaleImage s img x y = img (x / s) (y / s)
+scaleImage s = transformImage (\x y -> (x/s, y/s))
+
+-- transform coordinates to display image at the origin.
+originImage :: Image a -> Image a
+originImage = transformImage (\x y -> (2*x-1, 2*y-1))
 
 -- maskImage shows background image bg where bm is false and foreground image fg where bm is true.
 maskImage :: Image a -> Image a -> Bitmap -> Image a
@@ -88,15 +102,19 @@ constAnim img _ = img
 -- mapAnim maps f over the values in each animated image.
 -- mapAnim runs f over each animated image.
 mapAnim :: (Image a -> Image b) -> Anim a -> Anim b
-mapAnim f anim ts = f (anim ts)
+mapAnim f an ts = f (an ts)
 
 mapAnimTime :: (Float -> Float) -> Anim a -> Anim a
-mapAnimTime f anim ts = anim (f ts)
+mapAnimTime f an ts = an (f ts)
 
 -- scaleAnim speeds up the animation by s.
 scaleAnim :: Float -> Anim a -> Anim a
-scaleAnim s anim = mapAnimTime (*s) anim
+scaleAnim s = mapAnimTime (*s)
 
 -- translateAnim skips the animation backwards in time by dt.
 translateAnim :: Float -> Anim a -> Anim a
-translateAnim dt anim = mapAnimTime (\t -> t - dt) anim
+translateAnim dt = mapAnimTime (\t -> t - dt)
+
+-- animOrigin shows the animation with the origin centered, with coordinates over [-1..1].
+animOrigin :: ColorAnim -> IO ()
+animOrigin = anim . mapAnim originImage
