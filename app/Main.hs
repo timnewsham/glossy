@@ -36,7 +36,8 @@ circle :: Float -> ColorAnim
 circle rad ts = maskImage (bmCircle rad) (blinkingGradient ts)
 
 throbCircle :: ColorAnim
-throbCircle ts = circle (0.1 + 0.75 * (cosCycle 7 ts)) ts
+throbCircle ts = circle theta ts
+  where theta = 0.1 + 0.75 * (cosCycle 7 ts)
 
 circle075 :: ColorAnim
 circle075 = circle 0.75
@@ -45,7 +46,8 @@ circle075 = circle 0.75
 rotCircle :: Float -> ColorImage
 rotCircle theta = rotateImage theta (mask gradient)
   where
-    mask = maskImage (bmCircle 0.75) . maskImage (bmChecker 8)
+    -- mask = maskImage (bmCircle 0.75) . maskImage (bmChecker 8)
+    mask = maskImage (mapImage2 (&&) (bmCircle 0.75) (bmChecker 8))
 
 -- a circle at the origin with radius rad.
 bmCircle :: Float -> Bitmap
