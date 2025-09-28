@@ -8,8 +8,8 @@ import Types
 
 main :: IO ()
 -- main = animOrigin circle075
-main = animOrigin (Anim (\ts -> (rotCircle (periodRad 5 ts))))
--- main = animOrigin throbCircle
+-- main = animOrigin (Anim (\ts -> (rotCircle (periodRad 5 ts))))
+main = animOrigin throbCircle
 -- main = animOrigin (mapAnim (scaleImage 0.5) circle075)
 -- main = animOrigin (mapAnim (translateImage 0.3 0 . scaleImage 0.5) circle075)
 -- main = animOrigin (translateAnim 10 (scaleAnim 0.5 circle075))
@@ -17,29 +17,21 @@ main = animOrigin (Anim (\ts -> (rotCircle (periodRad 5 ts))))
 -- main = animOrigin (constAnim (bwBitmap (bmCircle 0.75)))
 -- main = animOrigin (constAnim (bwBitmap (bmChecker 8)))
 
--- a gradient circled at the origin.
+-- a gradient centered at the origin.
 gradient :: ColorImage
-gradient = mkImage gradient'
+gradient = transformImage centeredToUnit $ mkImage gradient'
 
-gradient' (x, y) = makeColor x' y' 0 1
-  where
-    x' = unlerp (-1.0) 1.0 x
-    y' = unlerp (-1.0) 1.0 y
+gradient' (x, y) = makeColor x y 0 1
 
 -- a gradient centered at the origin that cycles with time.
 blinkingGradient :: ColorAnim
 blinkingGradient = mkAnim blinkingGradient'
 
 centeredToUnit :: Coord -> Coord
-centeredToUnit (x,y) = (x', y')
-  where
-    x' = unlerp (-1.0) 1.0 x
-    y' = unlerp (-1.0) 1.0 y
+centeredToUnit (x,y) = (0.5 * x + 0.5, 0.5 * y + 0.5)
 
-blinkingGradient' ts coord = lerp grad white (cosCycle 2 ts)
-  where
-    (x', y') = centeredToUnit coord
-    grad = makeColor x' y' 0 1
+-- TODO: make lerp work over images and anims?
+blinkingGradient' ts coord = lerp (calcImage gradient coord) white (cosCycle 2 ts)
 
 -- a circle at the origin colored by a blinking grandient.
 circle :: Float -> ColorAnim
