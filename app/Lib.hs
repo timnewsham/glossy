@@ -62,9 +62,13 @@ unlerp v minv maxv = (v - minv) / (maxv - minv)
 blend :: Lerpable a => Float -> Image a -> Image a -> Image a
 blend t img1 img2 = lerp t img1 img2
 
+blendAnim :: Lerpable a => Float -> Anim a -> Anim a -> Anim a
+blendAnim t an1 an2 = lerp t an1 an2
+
 -- fade from an1 to an2 over time using tfunc to calculate the fade factor from the time.
 fade :: Lerpable a => (Float -> Float) -> Anim a -> Anim a -> Anim a
-fade tfunc an1 an2 = Anim (\ts -> blend (tfunc ts) (unAnim an1 ts) (unAnim an2 ts))
+-- fade tfunc an1 an2 = Anim (\ts -> blend (tfunc ts) (unAnim an1 ts) (unAnim an2 ts))
+fade tfunc an1 an2 = withTime (\ts -> blendAnim (tfunc ts) an1 an2)
 
 -- Lerpable a is a type that can be scaled by a float and added together.
 class Lerpable a where
@@ -111,19 +115,23 @@ instance Lerpable a => Lerpable (Anim a) where
   scale s img = fmap (scale s) img
   add = liftA2 add
 
--- withPos takes a function from position to Image a, and generates an Image.
+-- withPos manipulates a (position-varying) image in a position-dependent way.
+-- It takes a function from position to Image a, and generates an Image.
 -- This plumbing can make it easier to get a handle on the position by
 -- wrapping and unwrapping the Image function for you.
 withPos :: (Coord -> Image a) -> Image a
 withPos im = Image (\pos -> calcImage (im pos) pos)
 
--- withTime takes a function from time to an animation, and animates it.
+-- withTime manipulates a (time-varying) animation in a time-dependent way.
+-- It takes a function from time to an animation, and animates it.
 -- This plumbing can make it easier to get a handle on the timestamp by
 -- wrapping and unwrapping the Anim function for you.
 withTime :: (Float -> Anim a) -> Anim a
 withTime an = Anim (\ts -> unAnim (an ts) ts)
 
--- withTime takes a function from (time, coord) to an animation, and animates it.
+-- withTimePos manipulates a (time- and position-varying) animation in a time- and
+-- position-varying way.
+-- It takes a function from (time, coord) to an animation, and animates it.
 -- This plumbing can make it easier to get a handle on the timestamp and position by
 -- wrapping and unwrapping the Anim function for you.
 withTimePos :: (Float -> Coord -> Anim a) -> Anim a
