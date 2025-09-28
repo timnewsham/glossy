@@ -13,6 +13,12 @@ module Types (
   , ColorAnim
   , colorBitmap
   , bwBitmap
+  , mappendOver
+  , mconcatOver
+  , mulBitmap
+  , mulBitmaps
+  , sumBitmap
+  , sumBitmaps
   , constImage
   , transformImage
   , translate
@@ -42,10 +48,30 @@ module Types (
 ) where
 
 import Control.Applicative
+import Data.Monoid
 
 import GlossTypes
 
 type Coord = (Float, Float)
+
+translate :: Coord -> Coord -> Coord
+translate (dx, dy) (x,y) = (x + dx, y + dy)
+
+-- TODO: make Coord a Scale
+scaleF :: Float -> Coord -> Coord
+scaleF s (x, y) = (x*s, y*s)
+
+unitToOrigin :: Coord -> Coord
+unitToOrigin = translate (-1, -1) . scaleF 2
+
+originToUnit :: Coord -> Coord
+originToUnit = scaleF 0.5 . translate (1, 1)
+
+rot :: Float -> Coord -> Coord
+rot theta (x, y) = (x * costheta - y * sintheta, x * sintheta + y * costheta)
+  where
+    costheta = cos theta
+    sintheta = sin theta
 
 -- An image maps (x,y) (often in range [0..1]) to values.
 data Image a = Image (Coord -> a)
@@ -64,27 +90,6 @@ type Bitmap = Image Bool
 -- It maps (x, y) to Colors.
 type ColorImage = Image Color
 
--- An Anim maps timestamps in seconds to images.
--- It maps timestamps in seconds and (x,y) to values.
-data Anim a = Anim (Float -> Image a)
-
-unAnim :: Anim a -> Float -> Image a
-unAnim (Anim f) ts = f ts
-
-calcAnim :: Anim a -> Float -> Coord -> a
-calcAnim (Anim f) ts coord = calcImage (f ts) coord
-
-mkAnim :: (Float -> Coord -> a) -> Anim a
-mkAnim f = Anim (\ts -> Image (\coord -> f ts coord))
-
--- A ColorAnim is animation of Color images.
--- It maps timestamps in seconds and (x,y) to Colors.
-type ColorAnim = Anim Color
-
--- constImage returns an image where all (x,y) values are v.
-constImage :: a -> Image a
-constImage = Image . const
-
 -- fmap over images value by value at each coordinate.
 instance Functor Image where
   fmap f (Image imgf) = Image (f . imgf)
@@ -93,15 +98,47 @@ instance Applicative Image where
   pure v = mkImage (\_coord -> v)
   (Image imgf1) <*> (Image imgf2) = Image (\coord -> imgf1 coord (imgf2 coord))
 
--- combine two images with a function over values.
--- mapImage2 :: (a -> b -> c) -> Image a -> Image b -> Image c
--- mapImage2 f (Image img1f) (Image img2f) = Image (\coord -> f (img1f coord) (img2f coord))
--- mapImage2 = liftA2
+instance Semigroup a => Semigroup (Image a) where
+  (<>) = liftA2 (<>)
 
--- combine three images with a function over values.
--- mapImage3 :: (a -> b -> c -> d) -> Image a -> Image b -> Image c -> Image d
--- mapImage3 f (Image img1f) (Image img2f) (Image img3f) = Image (\coord -> f (img1f coord) (img2f coord) (img3f coord))
--- mapImage3 = liftA3
+instance Monoid a => Monoid (Image a) where
+  mempty = constImage mempty
+
+-- XXX TODO: is there something like this in std lib already?
+mconcatOver :: (Functor f, Monoid (f a1)) => (a1 -> b) -> (a2 -> a1) -> [f a2] -> f b
+-- mconcatOver :: Monoid b => (b -> a) -> (a -> b) -> [Image a] -> Image a
+-- convert [Image a] to [Image b] with inj where b is a Monoid
+-- collapse to Image b with mconcat
+-- convert back to Image a with ext
+-- mconcatOver ext inj bms = fmap getAll (mconcat (map (fmap All) bms))
+mconcatOver ext inj = fmap ext . mconcat . map (fmap inj)
+
+mappendOver :: (Functor f, Semigroup (f a1)) => (a1 -> b) -> (a2 -> a1) -> f a2 -> f a2 -> f b
+-- mappendOver :: Monoid b => (b -> a) -> (a -> b) -> Image a -> Image a -> Image a
+mappendOver ext inj bm1 bm2 = fmap ext (fmap inj bm1 <> fmap inj bm2)
+
+-- TODO: these would be useful for color images too if colors were monoids... check on this..
+-- if so, we can make sum and products of images easily with monoid.
+
+-- mulBitmaps returns a bitmap that is True everywhere all input bitmaps are True.
+mulBitmaps :: [Bitmap] -> Bitmap
+mulBitmaps = mconcatOver getAll All
+
+mulBitmap :: Bitmap -> Bitmap -> Bitmap
+-- mulBitmap bm1 bm2 = mappendOver getAll All bm1 bm2
+-- or more simply:
+mulBitmap = liftA2 (&&)
+
+sumBitmaps :: [Bitmap] -> Bitmap
+sumBitmaps = mconcatOver getAny Any
+
+sumBitmap :: Bitmap -> Bitmap -> Bitmap
+-- sumBitmap = mappendOver getAny Any
+sumBitmap = liftA2 (||)
+
+-- constImage returns an image where all (x,y) values are v.
+constImage :: a -> Image a
+constImage = Image . const
 
 -- transforms an image's coordinates by f.
 -- note: the image will appear transformed by the inverse of f.
@@ -109,42 +146,23 @@ instance Applicative Image where
 transformImage :: (Coord -> Coord) -> Image a -> Image a
 transformImage f (Image imgf) = Image (imgf . f)
 
-translate :: Coord -> Coord -> Coord
-translate (dx, dy) (x,y) = (x + dx, y + dy)
-
 -- translate an image by (dx, dy).
 translateImage :: Coord -> Image a -> Image a
 translateImage (dx, dy) = transformImage $ translate (-dx, -dy)
-
--- TODO: make Coord a Scale
-scaleF :: Float -> Coord -> Coord
-scaleF s (x, y) = (x*s, y*s)
 
 -- scale an iamge by s.
 -- not a Scale instance because Image a is not a distinct type.
 -- XXX make Image a Scale.
 scaleImage :: Float -> Image a -> Image a
-scaleImage s = transformImage (scaleF (1/s))
-
-unitToOrigin :: Coord -> Coord
-unitToOrigin = translate (-1, -1) . scaleF 2
+scaleImage s = transformImage $ scaleF (1/s)
 
 -- transform coordinates to display image at the origin from first quadrant coordinates.
 originImage :: Image a -> Image a
 originImage = transformImage unitToOrigin
 
-originToUnit :: Coord -> Coord
-originToUnit = scaleF 0.5 . translate (1, 1)
-
 -- transform coordinates to display image in first quadrant from centered coordinates.
 unoriginImage :: Image a -> Image a
 unoriginImage = transformImage originToUnit
-
-rot :: Float -> Coord -> Coord
-rot theta (x, y) = (x * costheta - y * sintheta, x * sintheta + y * costheta)
-  where
-    costheta = cos theta
-    sintheta = sin theta
 
 rotateImage :: Float -> Image a -> Image a
 rotateImage theta = transformImage $ rot (0-theta)
@@ -165,6 +183,23 @@ colorBitmap bg fg bm = mixImage bm (constImage bg) (constImage fg)
 bwBitmap :: Bitmap -> ColorImage
 bwBitmap = colorBitmap black white
 
+-- An Anim maps timestamps in seconds to images.
+-- It maps timestamps in seconds and (x,y) to values.
+data Anim a = Anim (Float -> Image a)
+
+unAnim :: Anim a -> Float -> Image a
+unAnim (Anim f) ts = f ts
+
+calcAnim :: Anim a -> Float -> Coord -> a
+calcAnim (Anim f) ts coord = calcImage (f ts) coord
+
+mkAnim :: (Float -> Coord -> a) -> Anim a
+mkAnim f = Anim (\ts -> Image (\coord -> f ts coord))
+
+-- A ColorAnim is animation of Color images.
+-- It maps timestamps in seconds and (x,y) to Colors.
+type ColorAnim = Anim Color
+
 -- constAnim is an animation of a constant image.
 constAnim :: Image a -> Anim a
 constAnim img = Anim (\_ts -> img)
@@ -175,6 +210,16 @@ instance Functor Anim where
   -- at each ts we get the image and map f over it.
   -- Anim (\ts -> fmap f (an ts))
   fmap f (Anim an) = Anim (fmap f . an)
+
+instance Applicative Anim where
+  pure v = mkAnim (\_ts _coord -> v)
+  (Anim anf1) <*> (Anim anf2) = Anim (\ts -> anf1 ts <*> anf2 ts)
+
+instance Semigroup a => Semigroup (Anim a) where
+  (<>) = liftA2 (<>)
+
+instance Monoid a => Monoid (Anim a) where
+  mempty = constAnim mempty
 
 -- mapImages will run f over each image in an Anim.
 -- at each ts we get the image and use f to map it.
