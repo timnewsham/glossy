@@ -8,6 +8,9 @@ module Lib (
   , lerp
   , unlerp
 
+  , Scale
+  , Addable
+
   , animOrigin
 ) where
 
@@ -35,7 +38,7 @@ periodRad per x = 2 * pi * x / per
 
 -- scaleSin scales the output of sin/cos to [0..1]
 scaleSin :: Float -> Float
-scaleSin = unlerp (-1.0) 1.0
+scaleSin x = unlerp x (-1.0) 1.0
 
 -- clamp return x clamped between minx an maxx.
 clamp :: Ord a => a -> a -> a -> a
@@ -43,14 +46,14 @@ clamp minx maxx x = if x < minx then minx else if x > maxx then maxx else x
 
 -- lerp returns the linear interpolation between minv and maxv based on t, which is clamped to [0..1].
 -- You can lerp anything that can be scaled and added.
-lerp :: (Scale a, Addable a) => a -> a -> Float -> a
-lerp minv maxv t = ((1-t') ^* minv) ^+ (t' ^* maxv)
+lerp :: (Scale a, Addable a) => Float -> a -> a -> a
+lerp t minv maxv = ((1-t') ^* minv) ^+ (t' ^* maxv)
   where t' = clamp 0.0 1.0 t
 
 -- unlerp scales v to [0..1] based on how far it is between minv and maxv.
 -- It does not do any clamping and values outside [minv..maxv] will not be in [0..1].
 unlerp :: Float -> Float -> Float -> Float
-unlerp minv maxv v = (v - minv) / (maxv - minv)
+unlerp v minv maxv = (v - minv) / (maxv - minv)
 
 -- Scale a is a type that can be scaled by a float.
 class Scale a where
