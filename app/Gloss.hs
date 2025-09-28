@@ -1,51 +1,13 @@
 -- Gloss encapsulates graphics support from Graphics.Gloss.
 module Gloss (
-  Coord
-  , Image(..)
-  , calcImage
-  , Anim(..)
-  , unAnim
-  , calcAnim
-  , anim
-  , scaleColor
-
-  -- re-exports.
-  , Color
-  , makeColor
-  , white
-  , black
+  anim
 ) where
 
 import Data.Word (Word8)
 import qualified Data.ByteString as B
 import qualified Graphics.Gloss as G
-import Graphics.Gloss (Color, makeColor, white, black, rgbaOfColor)
 
-type Coord = (Float, Float)
-
--- An image maps (x,y) (often in range [0..1]) to values.
-data Image a = Image (Coord -> a)
-
-calcImage :: Image a -> Coord -> a
-calcImage (Image f) = f
-
--- An Anim maps timestamps in seconds to images.
--- It maps timestamps in seconds and (x,y) to values.
-data Anim a = Anim (Float -> Image a)
-
-unAnim :: Anim a -> Float -> Image a
-unAnim (Anim f) ts = f ts
-
-calcAnim :: Anim a -> Float -> Coord -> a
-calcAnim (Anim f) ts coord = calcImage (f ts) coord
-
--- ColorAnim maps (ts, x, y) to a color.
-type ColorAnim = Anim Color
-
--- scaleColor adjusts the RGB channels but leaves A unchanged.
-scaleColor :: Float -> Color -> Color
-scaleColor s c = makeColor (s*r) (s*g) (s*b) a
-    where (r,g,b,a) = rgbaOfColor c
+import Types
 
 -- genRGBA returns an RGBA bitmap with size (xsz,ysz) using an.
 genRGBA :: (Int, Int) -> ColorAnim -> Float -> G.Picture

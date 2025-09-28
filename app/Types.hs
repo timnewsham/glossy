@@ -1,11 +1,15 @@
 -- Types for the images, bitmaps, and animations.
 module Types (
-  Image
+  Coord
+  , Image(..)
   , mkImage
+  , calcImage
   , ColorImage
   , Bitmap
-  , Anim
+  , Anim(..)
   , mkAnim
+  , calcAnim
+  , unAnim
   , ColorAnim
   , colorBitmap
   , bwBitmap
@@ -27,15 +31,26 @@ module Types (
   , scaleAnim
   , translateAnim
 
-  , animOrigin
+  -- re-exports.
+  , Color
+  , makeColor
+  , rgbaOfColor
+  , white
+  , black
 ) where
 
-import Gloss
+import GlossTypes
 
--- Coord from gloss
--- Image from Gloss
+type Coord = (Float, Float)
+
+-- An image maps (x,y) (often in range [0..1]) to values.
+data Image a = Image (Coord -> a)
+
 mkImage :: (Coord -> a) -> Image a
 mkImage = Image
+
+calcImage :: Image a -> Coord -> a
+calcImage (Image f) = f
 
 -- A bitmap is an image of Bools.
 -- It maps (x, y) to Bools.
@@ -45,7 +60,16 @@ type Bitmap = Image Bool
 -- It maps (x, y) to Colors.
 type ColorImage = Image Color
 
--- Anim from Gloss
+-- An Anim maps timestamps in seconds to images.
+-- It maps timestamps in seconds and (x,y) to values.
+data Anim a = Anim (Float -> Image a)
+
+unAnim :: Anim a -> Float -> Image a
+unAnim (Anim f) ts = f ts
+
+calcAnim :: Anim a -> Float -> Coord -> a
+calcAnim (Anim f) ts coord = calcImage (f ts) coord
+
 mkAnim :: (Float -> Coord -> a) -> Anim a
 mkAnim f = Anim (\ts -> Image (\coord -> f ts coord))
 
@@ -55,11 +79,14 @@ type ColorAnim = Anim Color
 
 -- constImage returns an image where all (x,y) values are v.
 constImage :: a -> Image a
-constImage v = Image (\_coord -> v)
+constImage = Image . const
 
 -- fmap over images value by value.
 mapImage :: (a -> b) -> Image a -> Image b
-mapImage f (Image imgf) = Image (\coord -> f (imgf coord))
+mapImage f (Image imgf) = Image (f . imgf)
+
+instance Functor Image where
+  fmap = mapImage
 
 -- combine two images with a function over values.
 mapImage2 :: (a -> b -> c) -> Image a -> Image b -> Image c
@@ -132,7 +159,3 @@ scaleAnim s = mapAnimTime (*s)
 -- translateAnim skips the animation backwards in time by dt.
 translateAnim :: Float -> Anim a -> Anim a
 translateAnim dt = mapAnimTime (\t -> t - dt)
-
--- animOrigin shows the animation with the origin centered, with coordinates over [-1..1].
-animOrigin :: ColorAnim -> IO ()
-animOrigin = anim . mapAnim originImage

@@ -2,9 +2,8 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Main where
 
-import Gloss
-import Lib
 import Types
+import Lib
 
 main :: IO ()
 -- main = animOrigin circle075
