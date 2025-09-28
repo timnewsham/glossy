@@ -7,12 +7,20 @@ import Types
 
 main :: IO ()
 -- main = animOrigin circle075
-main = animOrigin throbCircle
+main = animOrigin (\ts -> rotCircle (periodRad 5 ts))
+-- main = animOrigin throbCircle
 -- main = animOrigin (mapAnim (scaleImage 0.5) circle075)
 -- main = animOrigin (mapAnim (translateImage 0.3 0 . scaleImage 0.5) circle075)
 -- main = animOrigin (translateAnim 10 (scaleAnim 0.5 circle075))
 -- main = animOrigin (scaleAnim 0.5 circle075)
 -- main = animOrigin (constAnim (bwBitmap (bmCircle 0.75)))
+
+-- a gradient circled at the origin.
+gradient :: ColorImage
+gradient x y = makeColor x' y' 0 1
+  where
+    x' = unlerp (-1.0) 1.0 x
+    y' = unlerp (-1.0) 1.0 y
 
 -- a gradient centered at the origin that cycles with time.
 blinkingGradient :: ColorAnim
@@ -31,6 +39,12 @@ throbCircle ts = circle (0.1 + 0.75 * (cosCycle 7 ts)) ts
 
 circle075 :: ColorAnim
 circle075 = circle 0.75
+
+-- A gradient circle rotated by theta.
+rotCircle :: Float -> ColorImage
+rotCircle theta = rotateImage theta circle'
+  where
+    circle' = maskImage (constImage black) gradient (bmCircle 0.75)
 
 -- a circle at the origin with radius rad.
 bmCircle :: Float -> Bitmap

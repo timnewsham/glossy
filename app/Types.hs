@@ -12,6 +12,8 @@ module Types (
   , translateImage
   , scaleImage
   , originImage
+  , rot
+  , rotateImage
   , maskImage
   , mapImage
   , mapImage2
@@ -82,6 +84,15 @@ scaleImage s = transformImage (\x y -> (x/s, y/s))
 -- transform coordinates to display image at the origin.
 originImage :: Image a -> Image a
 originImage = transformImage (\x y -> (2*x-1, 2*y-1))
+
+rot :: Float -> Float -> Float -> (Float, Float)
+rot theta x y = (x * costheta - y * sintheta, x * sintheta + y * costheta)
+  where
+    costheta = cos theta
+    sintheta = sin theta
+
+rotateImage :: Float -> Image a -> Image a
+rotateImage theta = transformImage $ rot (0-theta)
 
 -- maskImage shows background image bg where bm is false and foreground image fg where bm is true.
 maskImage :: Image a -> Image a -> Bitmap -> Image a
