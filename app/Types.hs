@@ -1,9 +1,11 @@
 -- Types for the images, bitmaps, and animations.
 module Types (
   Image
+  , mkImage
   , ColorImage
   , Bitmap
   , Anim
+  , mkAnim
   , ColorAnim
   , colorBitmap
   , bwBitmap
@@ -30,10 +32,9 @@ module Types (
 
 import Gloss
 
--- An image maps (x,y) (often in range [0..1]) to values.
--- Note: we're not defining new types or data types, to keep it simple,
--- at the expense of not being able to use type classes in places.
-type Image a = Float -> Float -> a
+-- Image from Gloss
+mkImage :: (Float -> Float -> a) -> Image a
+mkImage = Image
 
 -- A bitmap is an image of Bools.
 -- It maps (x, y) to Bools.
@@ -43,9 +44,9 @@ type Bitmap = Image Bool
 -- It maps (x, y) to Colors.
 type ColorImage = Image Color
 
--- An Anim maps timestamps in seconds to images.
--- It maps timestamps in seconds and (x,y) to values.
-type Anim a = Float -> Image a
+-- Anim from Gloss
+mkAnim :: (Float -> Float -> Float -> a) -> Anim a
+mkAnim f = Anim (\ts -> Image (\x y -> f ts x y))
 
 -- A ColorAnim is animation of Color images.
 -- It maps timestamps in seconds and (x,y) to Colors.
@@ -53,25 +54,25 @@ type ColorAnim = Anim Color
 
 -- constImage returns an image where all (x,y) values are v.
 constImage :: a -> Image a
-constImage v _ _ = v
+constImage v = Image (\_x _y -> v)
 
 -- fmap over images value by value.
 mapImage :: (a -> b) -> Image a -> Image b
-mapImage f img x y = f (img x y)
+mapImage f (Image imgf) = Image (\x y -> f (imgf x y))
 
 -- combine two images with a function over values.
 mapImage2 :: (a -> b -> c) -> Image a -> Image b -> Image c
-mapImage2 f img1 img2 x y = f (img1 x y) (img2 x y)
+mapImage2 f (Image img1f) (Image img2f) = Image (\x y -> f (img1f x y) (img2f x y))
 
 -- combine three images with a function over values.
 mapImage3 :: (a -> b -> c -> d) -> Image a -> Image b -> Image c -> Image d
-mapImage3 f img1 img2 img3 x y = f (img1 x y) (img2 x y) (img3 x y)
+mapImage3 f (Image img1f) (Image img2f) (Image img3f) = Image (\x y -> f (img1f x y) (img2f x y) (img3f x y))
 
 -- transforms an image's coordinates by f.
 -- note: the image will appear transformed by the inverse of f.
 -- but for simplicity I'm not going to try to define inverse functions.
 transformImage :: (Float -> Float -> (Float, Float)) -> Image a -> Image a
-transformImage f img x y = let (x', y') = f x y in img x' y'
+transformImage f (Image imgf) = Image (\x y -> let (x', y') = f x y in imgf x' y')
 
 -- translate an image by (dx, dy).
 translateImage :: Float -> Float -> Image a -> Image a
@@ -113,15 +114,15 @@ bwBitmap = colorBitmap black white
 
 -- constAnim is an animation of a constant image.
 constAnim :: Image a -> Anim a
-constAnim img _ = img
+constAnim img = Anim (\_ts -> img)
 
 -- mapAnim maps f over the values in each animated image.
 -- mapAnim runs f over each animated image.
 mapAnim :: (Image a -> Image b) -> Anim a -> Anim b
-mapAnim f an ts = f (an ts)
+mapAnim f (Anim an) = Anim (\ts -> f (an ts))
 
 mapAnimTime :: (Float -> Float) -> Anim a -> Anim a
-mapAnimTime f an ts = an (f ts)
+mapAnimTime f (Anim an) = Anim (\ts -> an (f ts))
 
 -- scaleAnim speeds up the animation by s.
 scaleAnim :: Float -> Anim a -> Anim a

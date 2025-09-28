@@ -1,6 +1,11 @@
 -- Gloss encapsulates graphics support from Graphics.Gloss.
 module Gloss (
-  anim
+  Image(..)
+  , calcImage
+  , Anim(..)
+  , unAnim
+  , calcAnim
+  , anim
   , scaleColor
 
   -- re-exports.
@@ -15,19 +20,35 @@ import qualified Data.ByteString as B
 import qualified Graphics.Gloss as G
 import Graphics.Gloss (Color, makeColor, white, black, rgbaOfColor)
 
+-- An image maps (x,y) (often in range [0..1]) to values.
+data Image a = Image (Float -> Float -> a)
+
+calcImage :: Image a -> Float -> Float -> a
+calcImage (Image f) x y = f x y
+
+-- An Anim maps timestamps in seconds to images.
+-- It maps timestamps in seconds and (x,y) to values.
+data Anim a = Anim (Float -> Image a)
+
+unAnim :: Anim a -> Float -> Image a
+unAnim (Anim f) ts = f ts
+
+calcAnim :: Anim a -> Float -> Float -> Float -> a
+calcAnim (Anim f) ts x y = calcImage (f ts) x y
+
 -- ColorAnim maps (ts, x, y) to a color.
-type ColorAnim = Float -> Float -> Float -> Color
+type ColorAnim = Anim Color
 
 -- scaleColor adjusts the RGB channels but leaves A unchanged.
 scaleColor :: Float -> Color -> Color
 scaleColor s c = makeColor (s*r) (s*g) (s*b) a
     where (r,g,b,a) = rgbaOfColor c
 
--- genRGBA returns an RGBA bitmap with size (xsz,ysz) using picfunc.
+-- genRGBA returns an RGBA bitmap with size (xsz,ysz) using an.
 genRGBA :: (Int, Int) -> ColorAnim -> Float -> G.Picture
-genRGBA (xsz, ysz) picfunc ts = G.bitmapOfByteString xsz ysz fmt bs False
+genRGBA (xsz, ysz) an ts = G.bitmapOfByteString xsz ysz fmt bs False
   where
-    bs = B.pack $ concat $ [color2bytes (picfunc ts (frac x xsz) (frac y ysz)) | y <- [0..ysz-1], x <- [0..xsz-1]]
+    bs = B.pack $ concat $ [color2bytes (calcAnim an ts (frac x xsz) (frac y ysz)) | y <- [0..ysz-1], x <- [0..xsz-1]]
     clampToByte x = fromIntegral (floor (x * 255) :: Int)
     color2bytes :: Color -> [Word8]
     color2bytes c = let (r,g,b,a) = G.rgbaOfColor c in map clampToByte [r,g,b,a]
