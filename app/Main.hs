@@ -14,6 +14,7 @@ main = animOrigin (\ts -> rotCircle (periodRad 5 ts))
 -- main = animOrigin (translateAnim 10 (scaleAnim 0.5 circle075))
 -- main = animOrigin (scaleAnim 0.5 circle075)
 -- main = animOrigin (constAnim (bwBitmap (bmCircle 0.75)))
+-- main = animOrigin (constAnim (bwBitmap (bmChecker 8)))
 
 -- a gradient circled at the origin.
 gradient :: ColorImage
@@ -32,7 +33,7 @@ blinkingGradient ts x y = lerp grad white (cosCycle 2 ts)
 
 -- a circle at the origin colored by a blinking grandient.
 circle :: Float -> ColorAnim
-circle rad ts = maskImage (constImage black) (blinkingGradient ts) (bmCircle rad)
+circle rad ts = maskImage (bmCircle rad) (blinkingGradient ts)
 
 throbCircle :: ColorAnim
 throbCircle ts = circle (0.1 + 0.75 * (cosCycle 7 ts)) ts
@@ -42,11 +43,19 @@ circle075 = circle 0.75
 
 -- A gradient circle rotated by theta.
 rotCircle :: Float -> ColorImage
-rotCircle theta = rotateImage theta circle'
+rotCircle theta = rotateImage theta (mask gradient)
   where
-    circle' = maskImage (constImage black) gradient (bmCircle 0.75)
+    mask = maskImage (bmCircle 0.75) . maskImage (bmChecker 8)
 
 -- a circle at the origin with radius rad.
 bmCircle :: Float -> Bitmap
 bmCircle rad x y = d < rad
   where d = sqrt (x*x + y*y) :: Float
+
+-- an nxn checkerboard at the origin from [-1..1].
+bmChecker :: Int -> Bitmap
+bmChecker n x y = even (square x' + square y')
+  where
+    square v = floor (v * fromIntegral n) :: Int
+    x' = unlerp (-1.0) 1.0 x
+    y' = unlerp (-1.0) 1.0 y

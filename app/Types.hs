@@ -14,6 +14,7 @@ module Types (
   , originImage
   , rot
   , rotateImage
+  , mixImage
   , maskImage
   , mapImage
   , mapImage2
@@ -94,13 +95,17 @@ rot theta x y = (x * costheta - y * sintheta, x * sintheta + y * costheta)
 rotateImage :: Float -> Image a -> Image a
 rotateImage theta = transformImage $ rot (0-theta)
 
--- maskImage shows background image bg where bm is false and foreground image fg where bm is true.
-maskImage :: Image a -> Image a -> Bitmap -> Image a
-maskImage = mapImage3 (\bgv fgv bmv -> if bmv then fgv else bgv)
+-- mixImage shows background image bg where bm is false and foreground image fg where bm is true.
+mixImage :: Bitmap -> Image a -> Image a -> Image a
+mixImage = mapImage3 (\bmv bgv fgv -> if bmv then fgv else bgv)
+
+-- maskImage shows image fg where bm is true, and zero when bm is false.
+maskImage :: Num a => Bitmap -> Image a -> Image a
+maskImage = mapImage2 (\bmv fgv -> if bmv then fgv else 0)
 
 -- colorBitmap returns a color image with bg color when bm is false and fg color when bm is true.
 colorBitmap :: Color -> Color -> Bitmap -> ColorImage
-colorBitmap bg fg bm = maskImage (constImage bg) (constImage fg) bm
+colorBitmap bg fg bm = mixImage bm (constImage bg) (constImage fg)
 
 -- bwBitmap converts a bitmap to a black and white color image.
 bwBitmap :: Bitmap -> ColorImage
