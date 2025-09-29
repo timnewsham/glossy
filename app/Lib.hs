@@ -18,7 +18,6 @@ module Lib (
 ) where
 
 import Data.Fixed (mod')
-import Control.Applicative
 
 import Gloss (anim)
 import Types
@@ -41,7 +40,7 @@ periodRad per x = 2 * pi * x / per
 
 -- scaleSin scales the output of sin/cos to [0..1]
 scaleSin :: Float -> Float
-scaleSin x = unlerp x (-1.0) 1.0
+scaleSin x = 0.5 + 0.5 * x
 
 -- clamp return x clamped between minx an maxx.
 clamp :: Ord a => a -> a -> a -> a
@@ -91,29 +90,39 @@ instance Lerpable Float where
 -- You can scale ints.
 instance Lerpable Int where
   scale s x = floor (s * fromIntegral x)
-  add = (+)
+  add x y = x + y
 
 -- Scaling a color adjusts the RGB channels but leaves A unchanged.
 instance Lerpable Color where
   scale s c = makeColor (s*r) (s*g) (s*b) a
     where (r,g,b,a) = rgbaOfColor c
-  add = (+)
+  add x y = x + y
 
--- Coordinates can be scaled and added.
+-- Coordinates and other tuples can be scaled and added.
+instance (Lerpable a, Lerpable b) => Lerpable (a, b) where
+  scale s (x, y) = (scale s x, scale s y)
+  add (x, y) (x', y') = (add x x', add y y')
+
 {-
-instance Lerpable (Float, Float) where
-  scale s (x,y) = (s*x, s*y)
-  add (x, y) (x', y') = (x+x', y+y')
--}
+ - We can do this generically to any applicable with lerpable type arg.
+ - Except we cant do this effectively in haskell without just repeating ourselves.
 
--- XXX generalize to all applicatives
+instance (Applicative a, Lerpable b) => Lerpable (a b) where
+  scale s x = scale s <$> x
+  add = liftA2 add
+ -}
+
+-- Image is applicative, so lerpable.
+-- Lerping two images fades between them pixel-by-pixel.
 instance Lerpable a => Lerpable (Image a) where
-  scale s img = fmap (scale s) img
-  add = liftA2 add
+  scale s x = scale s <$> x
+  add x y = add <$> x <*> y
 
+-- Anim is applicative, so lerpable.
+-- Lerping two animation fades images at each time stamp pixel-by-pixel.
 instance Lerpable a => Lerpable (Anim a) where
-  scale s img = fmap (scale s) img
-  add = liftA2 add
+  scale s x = scale s <$> x
+  add x y = add <$> x <*> y
 
 -- withPos manipulates a (position-varying) image in a position-dependent way.
 -- It takes a function from position to Image a, and generates an Image.
