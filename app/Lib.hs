@@ -135,8 +135,10 @@ withTime an = Anim (\ts -> unAnim (an ts) ts)
 -- This plumbing can make it easier to get a handle on the timestamp and position by
 -- wrapping and unwrapping the Anim function for you.
 withTimePos :: (Float -> Coord -> Anim a) -> Anim a
--- XXX rewrite this more cleanly in terms of withTime and withPos.
-withTimePos an = Anim (\ts -> withPos (\pos -> unAnim (an ts pos) ts))
+withTimePos an = Anim (\ts -> Image (\pos -> calcAnim (an ts pos) ts pos))
+-- withTimePos an = Anim (\ts -> Image (\pos -> calcImage ((unAnim (an ts pos) ts)) pos))
+-- withTimePos an = Anim (\ts -> withPos (\pos -> unAnim (an ts pos) ts))
+-- withTimePos an = withTime (\ts -> constAnim (withPos (\pos -> unAnim (an ts pos) ts)))
 
 -- animOrigin shows the animation with the origin centered, with coordinates over [-1..1].
 animOrigin :: ColorAnim -> IO ()
