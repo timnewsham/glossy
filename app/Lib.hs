@@ -1,5 +1,8 @@
 module Lib (
-  sinCycle
+  circle -- TODO: move with bitmap defn
+  , square
+
+  , sinCycle
   , cosCycle
   , rampCycle
   , periodRad
@@ -7,31 +10,35 @@ module Lib (
   , clamp
   , lerp
   , unlerp
-  , Lerpable
   , blend
+  , blendAnim
   , fade
-  , withPos
-  , withTime
-  , withTimePos
 
   , animOrigin
 ) where
 
 import Data.Fixed (mod')
 
-import Gloss (anim)
 import Types
 
+-- the unit circle
+circle :: Bitmap
+circle pos = mag pos < 1
+
+-- the first quadrant square
+square :: Bitmap
+square (x, y) = (0 <= x && x < 1) && (0 <= y && y < 1)
+
 -- sinCyle cycles from [0..1] with period per using sin.
-sinCycle :: Float -> Float -> Float
+sinCycle :: Time -> Time -> Time
 sinCycle per = scaleSin . sin . periodRad per
 
 -- cosCyle cycles from [0..1] with period per using cos.
-cosCycle :: Float -> Float -> Float
+cosCycle :: Time -> Time -> Time
 cosCycle per = scaleSin . cos . periodRad per
 
 -- rampCycle cycles from [0..1] with period per using a linear ramp up.
-rampCycle :: Float -> Float -> Float
+rampCycle :: Time -> Time -> Time
 rampCycle per x = mod' (x / per) 1.0
 
 -- periodRad returns radians for sin/cos to cycle with period per.
@@ -46,11 +53,14 @@ scaleSin x = 0.5 + 0.5 * x
 clamp :: Ord a => a -> a -> a -> a
 clamp minx maxx x = if x < minx then minx else if x > maxx then maxx else x
 
--- lerp returns the linear interpolation between minv and maxv based on t, which is clamped to [0..1].
--- You can lerp anything that can be scaled and added.
-lerp :: Lerpable a => Float -> a -> a -> a
-lerp t minv maxv = ((1-t') ^* minv) ^+ (t' ^* maxv)
-  where t' = clamp 0.0 1.0 t
+-- lerp returns the linear interpolation between minv and maxv based on p, which is clamped to [0..1].
+-- XXX we want this to work from Floats over Colors.  so we need better types and the Float->Color conversion
+lerp :: (Num a, FromFloat a) => Float -> a -> a -> a
+lerp p minv maxv = (pmin * minv) + (pmax * maxv)
+  where 
+    p' = clamp 0 1 p
+    pmin = fromFloat $ clamp 0 1 (1-p')
+    pmax = fromFloat $ clamp 0 1 p'
 
 -- unlerp scales v to [0..1] based on how far it is between minv and maxv.
 -- It does not do any clamping and values outside [minv..maxv] will not be in [0..1].
@@ -58,72 +68,18 @@ unlerp :: Float -> Float -> Float -> Float
 unlerp v minv maxv = (v - minv) / (maxv - minv)
 
 -- blend from image1 to image2 by fade factor from [0..1].
-blend :: Lerpable a => Float -> Image a -> Image a -> Image a
-blend t img1 img2 = lerp t img1 img2
+blend :: (Num a, FromFloat a) => Float -> Image a -> Image a -> Image a
+blend p img1 img2 = lerp p <$> img1 <*> img2
 
-blendAnim :: Lerpable a => Float -> Anim a -> Anim a -> Anim a
-blendAnim t an1 an2 = lerp t an1 an2
+blendAnim :: (Num a, FromFloat a) => Float -> Anim a -> Anim a -> Anim a
+blendAnim p an1 an2 = blend p <$> an1 <*> an2
 
 -- fade from an1 to an2 over time using tfunc to calculate the fade factor from the time.
-fade :: Lerpable a => (Float -> Float) -> Anim a -> Anim a -> Anim a
--- fade tfunc an1 an2 = Anim (\ts -> blend (tfunc ts) (unAnim an1 ts) (unAnim an2 ts))
-fade tfunc an1 an2 = withTime (\ts -> blendAnim (tfunc ts) an1 an2)
-
--- Lerpable a is a type that can be scaled by a float and added together.
-class Lerpable a where
-  scale :: Float -> a -> a
-  add :: a -> a -> a
-
--- Just another name for scale.
-(^*) :: Lerpable a => Float -> a -> a
-(^*) = scale
-
--- Another name for add
-(^+) :: Lerpable a => a -> a -> a
-(^+) = add
-
--- You can scale floats.
-instance Lerpable Float where
-  scale s x = s * x
-  add = (+)
-
--- You can scale ints.
-instance Lerpable Int where
-  scale s x = floor (s * fromIntegral x)
-  add x y = x + y
-
--- Scaling a color adjusts the RGB channels but leaves A unchanged.
-instance Lerpable Color where
-  scale s c = makeColor (s*r) (s*g) (s*b) a
-    where (r,g,b,a) = rgbaOfColor c
-  add x y = x + y
-
--- Coordinates and other tuples can be scaled and added.
-instance (Lerpable a, Lerpable b) => Lerpable (a, b) where
-  scale s (x, y) = (scale s x, scale s y)
-  add (x, y) (x', y') = (add x x', add y y')
+fade :: (Num a, FromFloat a) => (Float -> Float) -> Anim a -> Anim a -> Anim a
+fade pfunc an1 an2 ts = blend (pfunc ts) (an1 ts) (an2 ts)
+-- fade pfunc an1 an2 = blend <$> pfunc <*> an1 <*> an2
 
 {-
- - We can do this generically to any applicable with lerpable type arg.
- - Except we cant do this effectively in haskell without just repeating ourselves.
-
-instance (Applicative a, Lerpable b) => Lerpable (a b) where
-  scale s x = scale s <$> x
-  add = liftA2 add
- -}
-
--- Image is applicative, so lerpable.
--- Lerping two images fades between them pixel-by-pixel.
-instance Lerpable a => Lerpable (Image a) where
-  scale s x = scale s <$> x
-  add x y = add <$> x <*> y
-
--- Anim is applicative, so lerpable.
--- Lerping two animation fades images at each time stamp pixel-by-pixel.
-instance Lerpable a => Lerpable (Anim a) where
-  scale s x = scale s <$> x
-  add x y = add <$> x <*> y
-
 -- withPos manipulates a (position-varying) image in a position-dependent way.
 -- It takes a function from position to Image a, and generates an Image.
 -- This plumbing can make it easier to get a handle on the position by
@@ -148,7 +104,8 @@ withTimePos an = Anim (\ts -> Image (\pos -> calcAnim (an ts pos) ts pos))
 -- withTimePos an = Anim (\ts -> Image (\pos -> calcImage ((unAnim (an ts pos) ts)) pos))
 -- withTimePos an = Anim (\ts -> withPos (\pos -> unAnim (an ts pos) ts))
 -- withTimePos an = withTime (\ts -> constAnim (withPos (\pos -> unAnim (an ts pos) ts)))
+-}
 
 -- animOrigin shows the animation with the origin centered, with coordinates over [-1..1].
 animOrigin :: ColorAnim -> IO ()
-animOrigin = anim . mapImages originImage
+animOrigin = anim . fmap originImage
