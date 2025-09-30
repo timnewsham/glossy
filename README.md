@@ -8,3 +8,5 @@ See the examples in `app/Main.hs` and run with:
 
 `cabal run`
 
+![twistedCircle.gif](twistedCircle.gif)
+
