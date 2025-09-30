@@ -12,7 +12,8 @@ main = do
   let _t1b = rotCircle2 . periodRad 5
   let _t2 = throbCircle
   let _t3 = fmap (scaleImage 0.5) (gradCircle 0.75)
-  let _t4 = fmap (transform (translate (0.3, 0) . scale 0.5)) (gradCircle 0.75)
+  -- note: scale/translate args are inverse functions here.
+  let _t4 = fmap (transform (scale 2 . translate (0-0.3, 0))) (gradCircle 0.75)
   let _t5 = (fastForward (-10) . speedUp 0.5) (gradCircle 0.75)
   let _t6 = speedUp 5 (gradCircle 0.75)
   let _t7 = const (bwBitmap (scaleImage 0.75 circle))
