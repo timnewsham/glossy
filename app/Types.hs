@@ -39,6 +39,7 @@ module Types (
   , mapImageValues
   , speedUp
   , fastForward
+  , maskAnim
 
   , ColorAnim
 
@@ -167,7 +168,7 @@ bwBitmap = colorBitmap black white
 mixImage :: Bitmap -> Image a -> Image a -> Image a
 mixImage = liftA3 (\bmv bgv fgv -> if bmv then fgv else bgv)
 
--- maskImage shows image fg where bm is true, and zero when bm is false.
+-- maskImage shows image fg where bm is true, and zero (ie. black) when bm is false.
 maskImage :: Num a => Bitmap -> Image a -> Image a
 maskImage = liftA2 (\bmv fgv -> if bmv then fgv else 0)
 
@@ -189,6 +190,10 @@ speedUp s = transform (*s)
 -- fastForward skips the animation forward by dt.
 fastForward :: Time -> Anim a -> Anim a
 fastForward dt = transform (+dt)
+
+-- maskAnim shows an where m is True.
+maskAnim :: Num a => Bitmap -> Anim a -> Anim a
+maskAnim m an = maskImage m . an
 
 -- A ColorAnim is animation of Color images.
 -- It maps timestamps in seconds and (x,y) to Colors.
