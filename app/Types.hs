@@ -53,6 +53,7 @@ module Types (
   , rgba
   , rgb
   , anim
+  , animFile
 ) where
 
 import Control.Applicative

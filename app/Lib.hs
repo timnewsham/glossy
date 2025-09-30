@@ -15,6 +15,7 @@ module Lib (
   , fade
 
   , animOrigin
+  , animFileOrigin
 ) where
 
 import Data.Fixed (mod')
@@ -86,3 +87,6 @@ fade pfunc an1 an2 = blend <$> pfunc <*> an1 <*> an2
 -- animOrigin shows the animation with the origin centered, with coordinates over [-1..1].
 animOrigin :: ColorAnim -> IO ()
 animOrigin = anim . fmap originImage
+
+animFileOrigin :: FilePath -> Time -> ColorAnim -> IO ()
+animFileOrigin fn endtime = animFile fn endtime . fmap originImage

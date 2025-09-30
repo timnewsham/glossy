@@ -70,6 +70,7 @@ executable glossy
     build-depends:    base ^>=4.17.2.1
         , bytestring >= 0.11.5.3
         , gloss >=1.13.2.2
+        , JuicyPixels >=3.3.9
 
     -- Directories containing source files.
     hs-source-dirs:   app

@@ -24,6 +24,7 @@ main = do
   let _t10b = const $ unoriginImage $ gradiantDiag red green
   let _t11 = const $ twist (1/8) (bwBitmap $ checker 8)
   let _t12 = twistedCircle
+  -- animFileOrigin "twistedCircle.gif" 3 twistedCircle
   animOrigin _t12
 
 red = rgb 1 0 0
@@ -37,7 +38,7 @@ twistedCircle :: ColorAnim
 twistedCircle ts = twist nrot checkeredCircle
   where
     nrot = 0.5 * (sin . periodRad 3) ts
-    mask = andBitmap (circleRad 0.75) (checker 8)
+    mask = andBitmap (circleRad 1) (checker 8)
     checkeredCircle = maskImage mask gradient
 
 gradientFirstQuad :: ColorImage
