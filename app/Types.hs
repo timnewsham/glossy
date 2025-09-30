@@ -1,6 +1,8 @@
 -- Types for the images, bitmaps, and animations.
 module Types (
-  Time
+  transform
+
+  , Time
 
   , Coord
   , mag
@@ -12,8 +14,6 @@ module Types (
   , rotate
 
   , Image
-  , constImage
-  , transformImage
   , translateImage
   , scaleImage
   , originImage
@@ -36,9 +36,7 @@ module Types (
   , bwBitmap
 
   , Anim
-  , constAnim
   , mapImageValues
-  , warpTime
   , speedUp
   , fastForward
 
@@ -59,6 +57,12 @@ module Types (
 import Control.Applicative
 
 import Gloss
+
+-- transform applies a transform to the input parameter of a function.
+-- It can be used to transform positions in Images, transform time in Anims,
+-- or transform the linear factor in lerp in non-linear ways.
+transform :: (a -> a) -> (a -> b) -> (a -> b)
+transform trans f x = f (trans x)
 
 -- Time is a real.
 type Time = Float
@@ -96,34 +100,24 @@ rotate theta (x, y) = (x * costheta - y * sintheta, x * sintheta + y * costheta)
 -- `(+) <$> image1 <*> image2` does a pair-wise addition of each value in image1 and image2.
 type Image a = Coord -> a
 
--- constImage returns an image where all (x,y) values are v.
-constImage :: a -> Image a
-constImage a _pos = a
-
--- transforms an image's coordinates by f.
--- note: the image will appear transformed by the inverse of f.
--- but for simplicity I'm not going to try to define inverse functions.
-transformImage :: (Coord -> Coord) -> Image a -> Image a
-transformImage f imgf = imgf . f
-
 -- translate an image by (dx, dy).
 translateImage :: Coord -> Image a -> Image a
-translateImage (dx, dy) = transformImage $ translate (-dx, -dy)
+translateImage (dx, dy) = transform $ translate (-dx, -dy)
 
 -- scale an image's coordinates by s.
 scaleImage :: Float -> Image a -> Image a
-scaleImage s = transformImage $ scale (1/s)
+scaleImage s = transform $ scale (1/s)
 
 -- transform coordinates to display image at the origin from first quadrant coordinates.
 originImage :: Image a -> Image a
-originImage = transformImage unitToOrigin
+originImage = transform unitToOrigin
 
 -- transform coordinates to display image in first quadrant from centered coordinates.
 unoriginImage :: Image a -> Image a
-unoriginImage = transformImage originToUnit
+unoriginImage = transform originToUnit
 
 rotateImage :: Float -> Image a -> Image a
-rotateImage theta = transformImage $ rotate (0-theta)
+rotateImage theta = transform $ rotate (0-theta)
 
 -- A bitmap is an image of Bools, mapping each coordinate to a True or False value.
 type Bitmap = Image Bool
@@ -184,25 +178,17 @@ maskImage = liftA2 (\bmv fgv -> if bmv then fgv else 0)
 -- `binop <$> an1 <*> an2` mixes an1 with an2 at each time using binop.
 type Anim a = Time -> Image a
 
--- constAnim is an animation of a constant image.
-constAnim :: Image a -> Anim a
-constAnim img _ts = img
-
 -- mapImageValues maps f over each value in each image.
 mapImageValues :: (a -> b) -> Anim a -> Anim b
 mapImageValues = fmap . fmap
 
--- warpTime uses (f time) as the time in the animation.
-warpTime :: (Time -> Time) -> Anim a -> Anim a
-warpTime f anf = anf . f
-
 -- speedUp speeds up the animation by s.
 speedUp :: Float -> Anim a -> Anim a
-speedUp s = warpTime (*s)
+speedUp s = transform (*s)
 
 -- fastForward skips the animation forward by dt.
 fastForward :: Time -> Anim a -> Anim a
-fastForward dt = warpTime (+dt)
+fastForward dt = transform (+dt)
 
 -- A ColorAnim is animation of Color images.
 -- It maps timestamps in seconds and (x,y) to Colors.

@@ -12,15 +12,15 @@ main = do
   let _t1b = rotCircle2 . periodRad 5
   let _t2 = throbCircle
   let _t3 = fmap (scaleImage 0.5) (gradCircle 0.75)
-  let _t4 = fmap (transformImage (translate (0.3, 0) . scale 0.5)) (gradCircle 0.75)
+  let _t4 = fmap (transform (translate (0.3, 0) . scale 0.5)) (gradCircle 0.75)
   let _t5 = (fastForward (-10) . speedUp 0.5) (gradCircle 0.75)
   let _t6 = speedUp 5 (gradCircle 0.75)
-  let _t7 = constAnim (bwBitmap (scaleImage 0.75 circle))
-  let _t8 = constAnim (bwBitmap (bmChecker 8))
+  let _t7 = const (bwBitmap (scaleImage 0.75 circle))
+  let _t8 = const (bwBitmap (bmChecker 8))
   let _t9 = blendAnim 0.5 _t8  _t1
   let _t9b = fade (cosCycle 3) _t8 _t1
-  let _t10 = constAnim $ unoriginImage $ gradiant red green
-  let _t11 = constAnim $ twist (1/8) (bwBitmap $ bmChecker 8)
+  let _t10 = const $ unoriginImage $ gradiant red green
+  let _t11 = const $ twist (1/8) (bwBitmap $ bmChecker 8)
   let _t12 = twistedCircle
   animOrigin _t12
 
@@ -47,7 +47,7 @@ gradient = unoriginImage gradientFirstQuad
 
 -- a gradient centered at the origin that cycles with time.
 blinkingGradient :: ColorAnim
-blinkingGradient ts = blend (cosCycle 2 ts) gradient (constImage white)
+blinkingGradient ts = blend (cosCycle 2 ts) gradient (const white)
 
 -- a circle of radius r at the origin colored by a (unchanged by radius) blinking grandient.
 gradCircle :: Float -> ColorAnim
