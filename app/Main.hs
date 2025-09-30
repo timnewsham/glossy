@@ -19,7 +19,8 @@ main = do
   let _t8 = const (bwBitmap (bmChecker 8))
   let _t9 = blendAnim 0.5 _t8  _t1
   let _t9b = fade (cosCycle 3) _t8 _t1
-  let _t10 = const $ unoriginImage $ gradiant red green
+  let _t10 = const $ unoriginImage $ gradiantX red green
+  let _t10b = const $ unoriginImage $ gradiantDiag red green
   let _t11 = const $ twist (1/8) (bwBitmap $ bmChecker 8)
   let _t12 = twistedCircle
   animOrigin _t12
@@ -34,7 +35,7 @@ twist nrot im pos = rotateImage (2 * pi * nrot * mag pos) im pos
 twistedCircle :: ColorAnim
 twistedCircle ts = twist nrot checkeredCircle
   where
-    nrot = 0.5 * (1 - cosCycle 3 ts)
+    nrot = 0.5 * (sin . periodRad 3) ts
     mask = andBitmap (bmCircle 0.75) (bmChecker 8)
     checkeredCircle = maskImage mask gradient
 

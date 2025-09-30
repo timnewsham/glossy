@@ -1,5 +1,6 @@
 module Lib (
-  gradiant
+  gradiantDiag
+  , gradiantX
 
   , sinCycle
   , cosCycle
@@ -20,9 +21,17 @@ import Data.Fixed (mod')
 
 import Types
 
--- gradient returns a gradient from c0 at (0,0) to c1 at (1,1).
-gradiant :: Color -> Color -> ColorImage
-gradiant c0 c1 (x,y) = lerp ((x+y)/2) c0 c1
+avg :: Fractional a => a -> a -> a
+avg x y = (x+y)/2
+
+-- gradientDiag returns a gradient from c0 at (0,0) to c1 at (1,1).
+gradiantDiag :: Color -> Color -> ColorImage
+gradiantDiag c0 c1 (x,y) = lerp (avg x y) c0 c1
+
+-- gradiantX returns a gradiant in the x direction from c0 at 0 to c1 at 1.
+-- Rotate this for gradiants in other directions.
+gradiantX :: Color -> Color -> ColorImage
+gradiantX c0 c1 (x, _y) = lerp x c0 c1
 
 -- sinCyle cycles from [0..1] with period per using sin.
 sinCycle :: Time -> Time -> Time
