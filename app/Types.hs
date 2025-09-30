@@ -9,7 +9,7 @@ module Types (
   , scale
   , unitToOrigin
   , originToUnit
-  , rot
+  , rotate
 
   , Image
   , constImage
@@ -21,6 +21,9 @@ module Types (
   , rotateImage
 
   , Bitmap
+  , circle
+  , square
+  , checkerboard
   , andBitmap
   , andBitmaps
   , orBitmap
@@ -54,7 +57,6 @@ module Types (
 ) where
 
 import Control.Applicative
--- import Data.Monoid
 
 import Gloss
 
@@ -82,8 +84,8 @@ unitToOrigin = translate (-1, -1) . scale 2
 originToUnit :: Coord -> Coord
 originToUnit = scale 0.5 . translate (1, 1)
 
-rot :: Float -> Coord -> Coord
-rot theta (x, y) = (x * costheta - y * sintheta, x * sintheta + y * costheta)
+rotate :: Float -> Coord -> Coord
+rotate theta (x, y) = (x * costheta - y * sintheta, x * sintheta + y * costheta)
   where
     costheta = cos theta
     sintheta = sin theta
@@ -109,7 +111,6 @@ translateImage :: Coord -> Image a -> Image a
 translateImage (dx, dy) = transformImage $ translate (-dx, -dy)
 
 -- scale an image's coordinates by s.
--- Note this is different than `scale` on images which scales image values.
 scaleImage :: Float -> Image a -> Image a
 scaleImage s = transformImage $ scale (1/s)
 
@@ -122,11 +123,26 @@ unoriginImage :: Image a -> Image a
 unoriginImage = transformImage originToUnit
 
 rotateImage :: Float -> Image a -> Image a
-rotateImage theta = transformImage $ rot (0-theta)
-
+rotateImage theta = transformImage $ rotate (0-theta)
 
 -- A bitmap is an image of Bools, mapping each coordinate to a True or False value.
 type Bitmap = Image Bool
+
+-- the unit circle
+circle :: Bitmap
+circle pos = mag pos < 1
+
+-- the first quadrant square
+square :: Bitmap
+square (x, y) = (0 <= x && x < 1) && (0 <= y && y < 1)
+
+-- an infinite checkerboard with n x n squares in the first quadrant.
+checkerboard :: Int -> Bitmap
+checkerboard n (x, y) = even (tileNum x + tileNum y)
+  where
+    -- tileNum returns the tile number for v where there are n tiles from [0..1].
+    tileNum :: Float -> Int
+    tileNum v = floor (v * fromIntegral n)
 
 -- andBitmaps combines two bitmaps resulting in values that are True where both bitmaps are True.
 andBitmap :: Bitmap -> Bitmap -> Bitmap
@@ -142,6 +158,17 @@ orBitmap = liftA2 (||)
 orBitmaps :: [Bitmap] -> Bitmap
 orBitmaps bms pos = or [bm pos | bm <- bms]
 
+-- A ColorImage is an image of Colors, mapping each coordinate to a Color.
+type ColorImage = Image Color
+
+-- colorBitmap returns a color image with bg color when bm is false and fg color when bm is true.
+colorBitmap :: Color -> Color -> Bitmap -> ColorImage
+colorBitmap bg fg bm pos = if bm pos then fg else bg
+
+-- bwBitmap converts a bitmap to a black and white color image.
+bwBitmap :: Bitmap -> ColorImage
+bwBitmap = colorBitmap black white
+
 -- mixImage shows background image bg where bm is false and foreground image fg where bm is true.
 mixImage :: Bitmap -> Image a -> Image a -> Image a
 mixImage = liftA3 (\bmv bgv fgv -> if bmv then fgv else bgv)
@@ -150,16 +177,6 @@ mixImage = liftA3 (\bmv bgv fgv -> if bmv then fgv else bgv)
 maskImage :: Num a => Bitmap -> Image a -> Image a
 maskImage = liftA2 (\bmv fgv -> if bmv then fgv else 0)
 
--- A ColorImage is an image of Colors, mapping each coordinate to a Color.
-type ColorImage = Image Color
-
--- colorBitmap returns a color image with bg color when bm is false and fg color when bm is true.
-colorBitmap :: Color -> Color -> Bitmap -> ColorImage
-colorBitmap bg fg bm = mixImage bm (constImage bg) (constImage fg)
-
--- bwBitmap converts a bitmap to a black and white color image.
-bwBitmap :: Bitmap -> ColorImage
-bwBitmap = colorBitmap black white
 
 -- An Anim maps time to images.
 -- It is a functor and an applicative functor (because of (-> a)).

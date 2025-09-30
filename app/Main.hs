@@ -19,7 +19,11 @@ main = do
   let _t8 = constAnim (bwBitmap (bmChecker 8))
   let _t9 = blendAnim 0.5 _t8  _t1
   let _t9b = fade (cosCycle 3) _t8 _t1
-  animOrigin _t9b
+  let _t10 = constAnim $ unoriginImage $ gradiant red green
+  animOrigin _t10
+
+red = rgb 1 0 0
+green = rgb 0 1 0
 
 gradientFirstQuad :: ColorImage
 gradientFirstQuad (x,y) = rgb x y 0
@@ -56,12 +60,4 @@ rotCircle2 theta = rotateImage theta (maskImage mask gradient)
   where mask = orBitmap (bmCircle 0.75) (bmChecker 8)
 
 bmCircle rad = scaleImage rad circle
-bmChecker n = unoriginImage $ checker n
-
--- an n x n checkerboard in the first quadrant.
-checker :: Int -> Bitmap
-checker n (x, y) = even (tileNum x + tileNum y)
-  where
-    -- tileNum returns the tile number for v where there are n tiles from [0..1].
-    tileNum :: Float -> Int
-    tileNum v = floor (v * fromIntegral n)
+bmChecker n = unoriginImage $ checkerboard n

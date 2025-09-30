@@ -1,4 +1,4 @@
--- Gloss encapsulates graphics support from Graphics.Gloss.
+-- Gloss encapsulates the Graphics.Gloss specific parts of the code.
 module Gloss (
   Color
   , black
@@ -16,8 +16,9 @@ import Data.Word (Word8)
 import qualified Data.ByteString as B
 import qualified Graphics.Gloss as G
 
--- FromFloat is an abbreviated Rational because I dont want to make an impl for Color for it.
-class FromFloat a where
+-- FromFloat is an abbreviated Fractional, because I dont want to make a full Fractional impl for Color.
+-- This allows us to use `lerp` over Color.
+class Num a => FromFloat a where
   fromFloat :: Float -> a
 
 instance FromFloat Float where
