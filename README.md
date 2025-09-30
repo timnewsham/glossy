@@ -4,5 +4,7 @@ Glossy generates animations as functions of time and position using the gloss li
 
 ## Run
 
+See the examples in `app/Main.hs` and run with:
+
 `cabal run`
 
