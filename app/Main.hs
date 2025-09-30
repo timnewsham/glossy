@@ -20,10 +20,23 @@ main = do
   let _t9 = blendAnim 0.5 _t8  _t1
   let _t9b = fade (cosCycle 3) _t8 _t1
   let _t10 = constAnim $ unoriginImage $ gradiant red green
-  animOrigin _t10
+  let _t11 = constAnim $ twist (1/8) (bwBitmap $ bmChecker 8)
+  let _t12 = twistedCircle
+  animOrigin _t12
 
 red = rgb 1 0 0
 green = rgb 0 1 0
+
+-- twist twists an image into a spiral with nrot rotations at unit distance from the origin.
+twist :: Float -> Image a -> Image a
+twist nrot im pos = rotateImage (2 * pi * nrot * mag pos) im pos
+
+twistedCircle :: ColorAnim
+twistedCircle ts = twist nrot checkeredCircle
+  where
+    nrot = 0.5 * (1 - cosCycle 3 ts)
+    mask = andBitmap (bmCircle 0.75) (bmChecker 8)
+    checkeredCircle = maskImage mask gradient
 
 gradientFirstQuad :: ColorImage
 gradientFirstQuad (x,y) = rgb x y 0
