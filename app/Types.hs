@@ -1,8 +1,6 @@
 -- Types for the images, bitmaps, and animations.
 module Types (
-  transform
-
-  , Time
+  Time
 
   , Coord
   , mag
@@ -60,12 +58,6 @@ import Control.Applicative
 
 import Gloss
 
--- transform applies a transform to the input parameter of a function.
--- It can be used to transform positions in Images, transform time in Anims,
--- or transform the linear factor in lerp in non-linear ways.
-transform :: (a -> a) -> (a -> b) -> (a -> b)
-transform trans f x = f (trans x)
-
 -- Time is a real.
 type Time = Float
 
@@ -100,26 +92,27 @@ rotate theta (x, y) = (x * costheta - y * sintheta, x * sintheta + y * costheta)
 -- It is a functor, and an applicative functor (because (->) are).
 -- `fmap f image` applies f to each value in image.
 -- `(+) <$> image1 <*> image2` does a pair-wise addition of each value in image1 and image2.
+-- Images can be transformed by composing with a coordinate transformation such as `(img . scale 2)`.
 type Image a = Coord -> a
 
 -- translate an image by (dx, dy).
 translateImage :: Coord -> Image a -> Image a
-translateImage (dx, dy) = transform $ translate (-dx, -dy)
+translateImage (dx, dy) = (. translate (-dx, -dy))
 
 -- scale an image's coordinates by s.
 scaleImage :: Float -> Image a -> Image a
-scaleImage s = transform $ scale (1/s)
+scaleImage s = (. scale (1/s))
 
 -- transform coordinates to display image at the origin from first quadrant coordinates.
 originImage :: Image a -> Image a
-originImage = transform unitToOrigin
+originImage = (. unitToOrigin)
 
 -- transform coordinates to display image in first quadrant from centered coordinates.
 unoriginImage :: Image a -> Image a
-unoriginImage = transform originToUnit
+unoriginImage = (. originToUnit)
 
 rotateImage :: Float -> Image a -> Image a
-rotateImage theta = transform $ rotate (0-theta)
+rotateImage theta = (. rotate (0-theta))
 
 -- A bitmap is an image of Bools, mapping each coordinate to a True or False value.
 type Bitmap = Image Bool
@@ -178,6 +171,7 @@ maskImage = liftA2 (\bmv fgv -> if bmv then fgv else 0)
 -- It is a functor and an applicative functor (because of (-> a)).
 -- `fmap f an` applies f to each image in the animation.
 -- `binop <$> an1 <*> an2` mixes an1 with an2 at each time using binop.
+-- Anims can be time-warped by composing with a time transformation, such as `an . (*2)`.
 type Anim a = Time -> Image a
 
 -- mapImageValues maps f over each value in each image.
@@ -186,11 +180,11 @@ mapImageValues = fmap . fmap
 
 -- speedUp speeds up the animation by s.
 speedUp :: Float -> Anim a -> Anim a
-speedUp s = transform (*s)
+speedUp s = (. (*s))
 
 -- fastForward skips the animation forward by dt.
 fastForward :: Time -> Anim a -> Anim a
-fastForward dt = transform (+dt)
+fastForward dt = (. (+dt))
 
 -- maskAnim shows an where m is True.
 maskAnim :: Num a => Bitmap -> Anim a -> Anim a
