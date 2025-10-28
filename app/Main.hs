@@ -10,8 +10,9 @@ import Lib
 
 main :: IO ()
 main = do
-  --(Right earth) <- PIC.readJpeg "earth.jpg"
+  -- (Right earth) <- PIC.readJpeg "earth.jpg"
   (Right earth) <- PIC.readJpeg "earth2.jpg"
+  -- (Right earth) <- PIC.readJpeg "timRafa.jpg"
   let earthRGB = PIC.convertRGB8 earth
   let _t0 = gradCircle 0.75
   let _t1 = rotCircle . periodRad 5
@@ -30,10 +31,11 @@ main = do
   let _t11 = const $ twist (1/8) (bwBitmap $ checker 8)
   let _t12 = twistedCircle
   let _t13 = const $ scaleImage 0.9 sphere
-  -- this translate idea works for theta, but not for phi.  need a better way to allow 3d rotations...
+  -- this translate idea works for theta, but not for phi.  need a better way to allow 3d rotations if we want it...
   let _t14 ts = scaleImage 0.9 $ sphericalImage $ (getImageColor earthRGB) . (translate (ts / 3, 0))
+  let _t15 ts = scaleImage 0.9 $ sphericalImage $ (phiShading (getImageColor earthRGB)) . (translate (ts / 3, 0))
   -- animFileOrigin "twistedCircle.gif" 3 twistedCircle
-  animOrigin _t14
+  animOrigin _t15
 
 red = rgb 1 0 0
 green = rgb 0 1 0
@@ -48,6 +50,10 @@ getImageColor img (x,y) = color
     (PIC.PixelRGB8 r g b) = PIC.pixelAt img (floor (0.5 * (x `mod'` 2.0) * fromIntegral w)) (floor ((y `mod'` 1.0) * fromIntegral h))
     color = rgb (fromIntegral r / 255.0) (fromIntegral g / 255.0) (fromIntegral b / 255.0)
 
+
+phiShading :: ColorImage -> ColorImage
+phiShading img (u, v) = (fromFloat f) * (img (u,v))
+  where f = 0.3 + 0.9 * 0.5 * (1 + cos (v*pi))
 
 -- transform (x,y) to normalized (theta, phi).
 -- where theta=0 at leftt edge of circle, theta=1 at rightedge of circle,
